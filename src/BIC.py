@@ -71,6 +71,8 @@ def prop_prob(graph, source, target, attempt, opinion, ffm, t):
     return 0 if den == 0 else (num/den) ** attempt
 
 
+## TODO: We need to check this thoroughly w.r.t. the commented-out version and how it
+##       compares to what's in the paper.
 def general_update(graph, node, opinion, t):
     '''
     num = opinion[node][t]
@@ -84,10 +86,9 @@ def general_update(graph, node, opinion, t):
 
     return num/den
     '''
-    if nx.is_directed(graph):
-        neighbors = graph.predecessors(node)
-    else:
-        neighbors = graph.neighbors(node)
+    neighbors = graph.neighbors(node) \
+                if not nx.is_directed(graph) \
+                else graph.predecessors(node)
 
     num = opinion[node][0]
     den = 1
@@ -98,7 +99,8 @@ def general_update(graph, node, opinion, t):
     return num/den
 
 
-
+## TODO: We need to check this thoroughly w.r.t. the commented-out version and how it
+##       compares to what's in the paper.
 def penalized_update(graph, node, opinion, t):
     '''
     num = opinion[node][t]
@@ -114,10 +116,9 @@ def penalized_update(graph, node, opinion, t):
 
     return num/den
     '''
-    if nx.is_directed(graph):
-        neighbors = graph.predecessors(node)
-    else:
-        neighbors = graph.neighbors(node)
+    neighbors = graph.neighbors(node) \
+                if not nx.is_directed(graph) \
+                else graph.predecessors(node)
 
     num = opinion[node][0]
     den = 1
@@ -142,8 +143,9 @@ def diffuse(graph, active, attempts, opinion, ffm, t, penalized, killed, thresho
                 pp = prop_prob(graph, node, out_neighbor, attempts[node], opinion, ffm, t)
                 if rd.random() <= pp:
                     _active.add(out_neighbor)
-                else:#if penalized[out_neighbor] ==  False:
-                    # penalized[out_neighbor] = True
+                # elif penalized[out_neighbor] ==  False:
+                #     penalized[out_neighbor] = True
+                else:
                     to_penalize.add(out_neighbor)
 
             else:
@@ -152,7 +154,7 @@ def diffuse(graph, active, attempts, opinion, ffm, t, penalized, killed, thresho
     for node in graph.nodes():
         if node in _active:
             opinion[node][t+1] = 1.0
-        elif node in to_penalize:# or penalized[node] == True: # NOTE: Change this possibly?
+        elif node in to_penalize: # or penalized[node] == True: # NOTE: Change this possibly?
             opinion[node][t+1] = penalized_update(graph, node, opinion, t)
         else:
             opinion[node][t+1] = general_update(graph, node, opinion, t)
