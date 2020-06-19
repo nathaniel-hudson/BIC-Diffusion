@@ -21,13 +21,14 @@ class BIC_Model:
         init_opinion : np.array
             One-dimensional array to represent the initial opinions for each user node.
         """
-        self.graph   = graph   # Social network topology.
-        self.ffm     = ffm     # Behavioral (FFM) parameters.
+        self.graph = graph   # Social network topology.
+        self.ffm   = ffm     # Behavioral (FFM) parameters.
         self.init_opinion = init_opinion  # Initial opinion vector.
 
         ## Initialize the bevahioral influence vector, to avoid having to constantly 
         ## compute it for each user since it's a constant value.
         self.ffm_inf = np.array([self.behavioral_inf(user) for user in self.graph.nodes])
+        self.prepared = False
 
 
     def prepare(self, t_horizon=100):
@@ -40,18 +41,18 @@ class BIC_Model:
             Number of time-steps considered for a simulation, by default 100
         """
         shape = (t_horizon, len(self.graph))
-        self.opinion = np.append(self.init_opinion, np.zeros(shape), axis=0)
+        self.opinion = np.append([self.init_opinion], np.zeros(shape), axis=0)
+        self.attempts = {user: 0 for user in self.graph.nodes}
+        self.prepared = True
 
 
-    def diffuse(self, active_set, attempts, t, threshold=1):
+    def diffuse(self, active_set, t, threshold=1):
         """Performs a single diffusion step to be used in a simulation.
 
         Parameters
         ----------
         active_set : set
             Set of activated nodes (i.e., active spreaders) to influence opinion.
-        attempts : dict
-            Data structure tracking the number of attempts of each pair of nodes.
         t : int
             Current time-step in the diffusion process.
         threshold : int, optional
@@ -62,6 +63,8 @@ class BIC_Model:
         set
             Set of newly activated nodes.
         """
+        assert self.prepared, 'Need to run Model.prepare() before diffusing.'
+
         new_active_set = set(active_set.copy())
         to_penalize = set()
 
@@ -69,26 +72,26 @@ class BIC_Model:
         for node in set(active_set):
             ## Grab the out-neighbors for the currently considered activated node and
             ## iterate its attempts tracker.
-            neighbors = set(graph.neighbors(node))
-            attempts[node] += 1
+            neighbors = set(self.graph.neighbors(node))
+            self.attempts[node] += 1
 
             ## If the current active node has not exceeded the threshold, attempt to
             ## activate its unactived out-neighbors.
-            if attempts[node] <= threshold:
+            if self.attempts[node] <= threshold:
                 for out_neighbor in neighbors - new_active_set:
-                    if rd.random() <= self.prop_prob(node, out_neighbor, attempts[node], t):
+                    if rd.random() <= self.prop_prob(node, out_neighbor, self.attempts[node], t):
                         new_active_set.add(out_neighbor)
                     else:
                         to_penalize.add(out_neighbor)
 
         ## Assign the (t+1) opinions for each user node.
-        for node in graph.nodes():
+        for node in self.graph.nodes():
             if node in new_active_set:
-                self.opinion[node][t+1] = 1.0
+                self.opinion[t+1][node] = 1.0
             elif node in to_penalize:
-                self.opinion[node][t+1] = self.penalized_update(node, t)
+                self.opinion[t+1][node] = self.penalized_update(node, t)
             else:
-                self.opinion[node][t+1] = self.general_update(node, t)
+                self.opinion[t+1][node] = self.general_update(node, t)
 
         return new_active_set
 
@@ -113,13 +116,13 @@ class BIC_Model:
                     else self.graph.predecessors(node)
 
         # num = self.opinion[node][0]
-        num = self.opinion[node][t]
+        num = self.opinion[t][node]
         den = 1
-        std = np.std([self.opinion[neighbor][t] for neighbor in neighbors])
+        std = np.std([self.opinion[t][neighbor] for neighbor in neighbors])
         for nei in neighbors:
-            if (self.opinion[node][t] - std <= self.opinion[nei][t]) and (self.opinion[nei][t] <= self.opinion[node][t] + std):
-                num += self.opinion[nei][t] * (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
-                den += (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
+            if (self.opinion[t][node] - std <= self.opinion[t][nei]) and (self.opinion[t][nei] <= self.opinion[t][node] + std):
+                num += self.opinion[t][nei] * (1 - abs(self.opinion[0][node] - self.opinion[t][nei]))
+                den += (1 - abs(self.opinion[0][node] - self.opinion[t][nei]))
 
         return num / den
 
@@ -144,13 +147,13 @@ class BIC_Model:
                     else self.graph.predecessors(node)
 
         # num = self.opinion[node][0]
-        num = self.opinion[node][t]
+        num = self.opinion[t][node]
         den = 1
-        std = np.std([self.opinion[neighbor][t] for neighbor in neighbors])
+        std = np.std([self.opinion[t][neighbor] for neighbor in neighbors])
         for nei in neighbors:
-            if self.opinion[nei][t] <= self.opinion[node][t] + std:
-                num += self.opinion[nei][t] * (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
-                den += (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
+            if self.opinion[t][nei] <= self.opinion[t][node] + std:
+                num += self.opinion[t][nei] * (1 - abs(self.opinion[0][node] - self.opinion[t][nei]))
+                den += (1 - abs(self.opinion[0][node] - self.opinion[t][nei]))
 
         return num / den
 
@@ -205,10 +208,24 @@ class BIC_Model:
         float
             Impact of opinion on propagation probability.
         """
-        return self.opinion[target][t] * (1 - abs(self.opinion[source][0] - self.opinion[target][t]))
+        return self.opinion[t][target] * (1 - abs(self.opinion[0][source] - self.opinion[t][target]))
 
 
     def behavioral_inf(self, user, coeffs=Constants.LAMBDA_DEFAULT):
+        """Calculates the impact of FFM factors (behavior) on propagation probabilities.
+
+        Parameters
+        ----------
+        user : int
+            User node ID.
+        coeffs : dict, optional
+            Behavioral coefficients for FFM factors, by default Constants.LAMBDA_DEFAULT
+
+        Returns
+        -------
+        float
+            Impact of behavior on propagation probability.
+        """
         beta_pos = sum(coeffs[factor] * self.ffm[user][factor]
                        for factor in coeffs if coeffs[factor] >= 0)
         beta_neg = sum(coeffs[factor] * self.ffm[user][factor]
