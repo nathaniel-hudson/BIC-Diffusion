@@ -81,16 +81,78 @@ class BIC_Model:
                     else:
                         to_penalize.add(out_neighbor)
 
+        ## Assign the (t+1) opinions for each user node.
         for node in graph.nodes():
             if node in new_active_set:
-                opinion[node][t+1] = 1.0
+                self.opinion[node][t+1] = 1.0
             elif node in to_penalize:
-                opinion[node][t+1] = penalized_update(graph, node, opinion, t)
+                self.opinion[node][t+1] = self.penalized_update(node, t)
             else:
-                opinion[node][t+1] = general_update(graph, node, opinion, t)
+                self.opinion[node][t+1] = self.general_update(node, t)
 
         return new_active_set
 
+
+    def general_update(self, node, t):
+        """Perform a GENERALIZED update for the given user node's opinion. This update is for cases where there is no incurred penalty.
+
+        Parameters
+        ----------
+        node : int
+            User node ID.
+        t : int
+            Current time-step.
+
+        Returns
+        -------
+        float
+            User node's updated opinion for the (t+1) time-step.
+        """
+        neighbors = self.graph.neighbors(node) \
+                    if not nx.is_directed(self.graph) \
+                    else self.graph.predecessors(node)
+
+        # num = self.opinion[node][0]
+        num = self.opinion[node][t]
+        den = 1
+        std = np.std([self.opinion[neighbor][t] for neighbor in neighbors])
+        for nei in neighbors:
+            if (self.opinion[node][t] - std <= self.opinion[nei][t]) and (self.opinion[nei][t] <= self.opinion[node][t] + std):
+                num += self.opinion[nei][t] * (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
+                den += (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
+
+        return num / den
+
+
+    def penalized_update(self, node, t):
+        """Perform a PENALIZED update for the given user node's opinion. This update is for cases where there is no incurred penalty.
+
+        Parameters
+        ----------
+        node : int
+            User node ID.
+        t : int
+            Current time-step.
+
+        Returns
+        -------
+        float
+            User node's penalized, updated opinion for the (t+1) time-step.
+        """
+        neighbors = self.graph.neighbors(node) \
+                    if not nx.is_directed(self.graph) \
+                    else self.graph.predecessors(node)
+
+        # num = self.opinion[node][0]
+        num = self.opinion[node][t]
+        den = 1
+        std = np.std([self.opinion[neighbor][t] for neighbor in neighbors])
+        for nei in neighbors:
+            if self.opinion[nei][t] <= self.opinion[node][t] + std:
+                num += self.opinion[nei][t] * (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
+                den += (1 - abs(self.opinion[node][0] - self.opinion[nei][t]))
+
+        return num / den
 
 
     def prop_prob(self, source, target, attempt, t):
@@ -112,9 +174,9 @@ class BIC_Model:
         float
             Propagation probability for `source` to activate `target`.
         """
-        in_neighbors = graph.neighbors(target) \
+        in_neighbors = self.graph.neighbors(target) \
                        if not nx.is_directed(self.graph) \
-                       else graph.predecessors(target)
+                       else self.graph.predecessors(target)
 
         opinion_inf = self.opinion_inf(source, target, t)
         behavio_inf = self.ffm_inf[target]
@@ -127,6 +189,22 @@ class BIC_Model:
 
 
     def opinion_inf(self, source, target, t):
+        """Calculates the impact of opinion on propagation probabilities.
+
+        Parameters
+        ----------
+        source : int
+            User node ID of activated source node.
+        target : int
+            User node ID of targeted node.
+        t : int
+            Current time-step.
+
+        Returns
+        -------
+        float
+            Impact of opinion on propagation probability.
+        """
         return self.opinion[target][t] * (1 - abs(self.opinion[source][0] - self.opinion[target][t]))
 
 
