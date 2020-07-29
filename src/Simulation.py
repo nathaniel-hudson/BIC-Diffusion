@@ -1,13 +1,14 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy    as np
+import os
 import progressbar
 import random   as rd
 import seaborn  as sns
 import time
 
-from Model import *
-from tqdm import tqdm
+from BIC_model_nx import *
+from tqdm         import tqdm
 
 from Algorithms import Heuristics, Proposed # Baselines
 
@@ -53,17 +54,18 @@ def main(random_seed):
                 algorithm   = ALGORITHMS[alg_label]
                 start_time  = time.time()
                 active_set  = algorithm(model, n_seeds)
+                killed_set  = set()
                 alg_runtime = time.time() - start_time
 
                 ## Perform diffusion steps for the simulation.
                 for time_step in range(time_horizon+1):
-                    active_set, visited = model.diffuse(active_set, time_step)
+                    active_set, killed_set = model.diffuse(active_set, killed_set, time_step)
 
                 ## Add record to the data.
                 data['trial'].append(trial)
-                data['opinion'].append(sum(model.opinion[time_horizon]))
-                data['activated'].append(len(active_set))
-                data['num_visited'].append(len(visited))
+                data['opinion'].append(model.total_opinion())
+                data['activated'].append(len(active_set.union(killed_set))) # len(active_set))
+                # data['num_visited'].append(len(visited))
                 data['algorithm'].append(alg_label)
                 data['seed_size'].append(n_seeds)
                 data['algorithm time'].append(alg_runtime)
