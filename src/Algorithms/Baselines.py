@@ -1,6 +1,8 @@
 import networkx as nx
 import random
 
+from hypergraph import hypergraph
+
 # from halp.undirected_hypergraph import UndirectedHypergraph
 
 def IMM_solution(model, n_seeds):
@@ -82,11 +84,13 @@ def TIM_solution(model, n_seeds):
     set
         Nodes selected to be seeds.
     """
+
+    ## NOTE: This should be functional, now.
     def _build_hypergraph(rounds):
         transpose  = model.graph.reverse()
-        hypergraph = nx.Graph()
-        hypergraph.add_nodes_from(model.graph)
-        hyperedge = 0
+        hypergraph = hypergraph()
+        hypergraph.add_nodes(model.graph.nodes())
+        
         for _ in range(rounds):
             discovered_nodes = set()
             model.prepare()
@@ -94,25 +98,32 @@ def TIM_solution(model, n_seeds):
 
             while True:
                 u = random.choice(graph.model.nodes)
-                _, visited = model.diffuse(set([u]), timestep)
+                _, visited = model.diffuse(set([u]), timestep) ## TODO: Adjust diffusion model to also provide visited.
                 timestep += 1
                 if visited == discovered_nodes:
                     break
                 else:
                     discovered_nodes = discovered_nodes.union(visited)
 
-                for v in discovered_nodes:
-                    if u != v:
-                        hypergraph.add_edge(u, f'hyperedge-{hyperedge}')
-                hyperedge += 1
+            hypergraph.add_edge(discovered_nodes)
+
+        return hypergraph
                     
+    def build_set_set(hypergraph, n_seeds):
+        seed_set = set()
+        for i in range(n_seeds):
+            degree_rank = {
+                node_id: hypergraph.degree(node_id)
+                for node_id in hypergraph.nodes
+            }
+            node_id = max(degree_rank, key=degree_rank.get)
+            seed_set.add(node_id)
+            hypergraph.delete_node_and_incident_edges(node_id)
+        return seed_set
 
-
-                
 
     m, n = model.graph.number_of_edges, model.graph.number_of_nodes
     rounds = 144 * (m + n) * epsilon ** (-3) * math.log(n, base=2)
-    hypergraph = build_hypergraph(R)
-    return build_set_set(H, n_seeds)
-    # return set()
+    hypergraph = build_hypergraph(rounds)
+    return build_set_set(hypergraph, n_seeds)
 
