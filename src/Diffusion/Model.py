@@ -5,11 +5,9 @@ import pandas   as pd
 import random   as rd
 import networkx as nx
 
-from BIC_model import BIC_Model
-
 from scipy.stats import arcsine, uniform
 
-class BIC_Model_nx(BIC_Model):
+class BIC(object):
 
     VULNERABLE = 0
     ACTIVATED  = 1
@@ -81,8 +79,8 @@ class BIC_Model_nx(BIC_Model):
         Returns
         -------
         (active_set: set, killed_set: set)
-            A tuple containing the the set of active/activated user nodes and user nodes that 
-            have been killed (i.e., can no longer activate neighbors).
+            A tuple containing the the set of active/activated user nodes and user nodes 
+            that have been killed (i.e., can no longer activate neighbors).
         """
         assert self.prepared, 'Need to run Model.prepare() before diffusing.'
 
@@ -106,7 +104,6 @@ class BIC_Model_nx(BIC_Model):
             active_set.add(activated_node)
 
         new_opinion = self.opinion.copy()
-
         for active_node in active_set:
             new_opinion[active_node] = 1.0
             for neighbor in self.graph.neighbors(active_node):
@@ -124,8 +121,6 @@ class BIC_Model_nx(BIC_Model):
 
         return active_set, killed_set
             
-            
-
         '''
         new_active_set = set(active_set.copy())
         activated = set()
@@ -158,14 +153,16 @@ class BIC_Model_nx(BIC_Model):
                 self.opinion[t+1][node] = self.general_update(node, t)
         '''
 
-        ## Record all reached nodes (i.e., active/activated nodes and nodes that failed to activate).
+        # Record all reached nodes (i.e., active/activated nodes and nodes that failed 
+        # to activate).
         visited = new_active_set.union(to_penalize)
 
         return new_active_set, visited
 
 
     def general_update(self, node, t):
-        """Perform a GENERALIZED update for the given user node's opinion. This update is for cases where there is no incurred penalty.
+        """Perform a GENERALIZED update for the given user node's opinion. This update 
+           is for cases where there is no incurred penalty.
 
         Parameters
         ----------
@@ -187,15 +184,18 @@ class BIC_Model_nx(BIC_Model):
         den = 1
         std = np.std([self.opinion[neighbor] for neighbor in neighbors])
         for nei in neighbors:
-            if (self.opinion[node] - std <= self.opinion[nei]) and (self.opinion[nei] <= self.opinion[node] + std):
-                num += self.opinion[nei] * (1 - abs(self.init_opinion[node] - self.opinion[nei]))
+            if (self.opinion[node] - std <= self.opinion[nei]) and \
+               (self.opinion[nei] <= self.opinion[node] + std):
+                num += self.opinion[nei] * \
+                    (1 - abs(self.init_opinion[node] - self.opinion[nei]))
                 den += (1 - abs(self.init_opinion[node] - self.opinion[nei]))
 
         return num / den
 
 
     def penalized_update(self, node, t):
-        """Perform a PENALIZED update for the given user node's opinion. This update is for cases where there is no incurred penalty.
+        """Perform a PENALIZED update for the given user node's opinion. This update is 
+           for cases where there is no incurred penalty.
 
         Parameters
         ----------
@@ -218,7 +218,8 @@ class BIC_Model_nx(BIC_Model):
         std = np.std([self.opinion[neighbor] for neighbor in neighbors])
         for nei in neighbors:
             if self.opinion[nei] <= self.opinion[node] + std:
-                num += self.opinion[nei] * (1 - abs(self.init_opinion[node] - self.opinion[nei]))
+                num += self.opinion[nei] * \
+                    (1 - abs(self.init_opinion[node] - self.opinion[nei]))
                 den += (1 - abs(self.init_opinion[node] - self.opinion[nei]))
 
         return num / den
@@ -236,7 +237,8 @@ class BIC_Model_nx(BIC_Model):
         t : int
             Current time-step during a simulation over a given time horizon.
         attempt : bool
-            Use the attempt counter to anneal propagation probability if True, (default=True).
+            Use the attempt counter to anneal propagation probability if True, 
+            (default=True).
 
         Returns
         -------
@@ -277,7 +279,8 @@ class BIC_Model_nx(BIC_Model):
         float
             Impact of opinion on propagation probability.
         """
-        return self.opinion[target] * (1 - abs(self.init_opinion[source] - self.opinion[target]))
+        return self.opinion[target] * \
+            (1 - abs(self.init_opinion[source] - self.opinion[target]))
 
 
     def behavioral_inf(self, user, coeffs=Constants.LAMBDA_DEFAULT):
