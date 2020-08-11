@@ -22,7 +22,7 @@ class hypergraph:
             self._node_edgesets[node_id] = set()
         else:
             self.nodes.add(node_id)
-            self._nodes_edgesets[node_id] = set()
+            self._node_edgesets[node_id] = set()
 
     
     def add_nodes(self, node_set):
@@ -92,7 +92,7 @@ class hypergraph:
 
 
     def delete_node_and_incident_edges(self, node_id):
-        assert node_in in self.nodes, 'Parameter `node_id` must be in the hypergraph.'
+        assert node_id in self.nodes, 'Parameter `node_id` must be in the hypergraph.'
 
         for edge_id in self._node_edgesets[node_id]:
             self.remove_edge(edge_id)

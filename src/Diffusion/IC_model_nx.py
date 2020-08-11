@@ -9,7 +9,7 @@ import seaborn  as sns
 
 from scipy.stats import arcsine, uniform
 
-class IC_Model_nx(object):
+class IC_Model(object):
     def __init__(self, graph, pp=0.1):
         """Initialize an instance of the BIC_Model.
 

@@ -29,22 +29,23 @@ class BIC(object):
         self.ffm   = ffm     # Behavioral (FFM) parameters.
         self.init_opinion = init_opinion  # Initial opinion vector.
 
-        ## Initialize the bevahioral influence vector, to avoid having to constantly 
-        ## compute it for each user since it's a constant value.
+        # Initialize the bevahioral influence vector, to avoid having to constantly compute it for each user since 
+        # it's a constant value.
         self.ffm_inf = np.array([self.behavioral_inf(user) for user in self.graph.nodes])
         self.prepared = False
 
 
-    def prepare(self, seed_set=None, t_horizon=100):
+    def prepare(self, threshold=1):
         """Prepare the BIC model instance for simulation by instantiating an instance-wide
            opinion vector that's indexed by time-step.
 
         Parameters
         ----------
-        t_horizon : int, optional
-            Number of time-steps considered for a simulation, by default 100
+        threshold : int, optional
+            Threshold of maximal activation attempts allowed, by default 1
         """
         # shape = (t_horizon+1, len(self.graph))
+        self.threshold = threshold
         self.opinion  = [
             self.init_opinion[node]
             for node in self.graph.nodes
@@ -53,10 +54,6 @@ class BIC(object):
             user: 0 
             for user in self.graph.nodes
         }
-        # self.state    = {
-        #     node: self.ACTIVATED if node in seed_set else self.VULNERABLE
-        #     for node in self.graph.nodes()
-        # }
         self.prepared = True
 
 
@@ -64,7 +61,28 @@ class BIC(object):
         return sum(self.opinion[node] for node in self.graph.nodes())
 
 
-    def diffuse(self, active_set, killed_set, t, threshold=1):
+    def simulate(self, seed_set, time_horizon):
+        assert self.prepared, 'Need to run Model.prepare() before simulating.'
+
+        active_set = seed_set if isinstance(seed_set, set) else set(seed_set)
+        killed_set = set()
+        visited_set = set()
+
+        ## Perform diffusion steps for the simulation.
+        for time_step in range(time_horizon+1):
+            active_set, killed_set, visited, done = self.diffuse(active_set, killed_set, time_step)
+            visited_set = visited_set.union(visited)
+            if done:
+                break
+
+        total_opinion = self.total_opinion()
+        activated = active_set.union(killed_set)
+        self.prepared = False
+        
+        return total_opinion, activated, visited_set
+
+
+    def diffuse(self, active_set, killed_set, t):
         """Performs a single diffusion step to be used in a simulation.
 
         Parameters
@@ -73,19 +91,18 @@ class BIC(object):
             Set of activated nodes (i.e., active spreaders) to influence opinion.
         t : int
             Current time-step in the diffusion process.
-        threshold : int, optional
-            Threshold of maximal activation attempts allowed, by default 1
 
         Returns
         -------
-        (active_set: set, killed_set: set)
-            A tuple containing the the set of active/activated user nodes and user nodes 
-            that have been killed (i.e., can no longer activate neighbors).
+        (active_set: set, killed_set: set, visited: set, done: bool)
+            A tuple containing the the set of active/activated user nodes and user nodes that have been killed (i.e., 
+            can no longer activate neighbors).
         """
         assert self.prepared, 'Need to run Model.prepare() before diffusing.'
 
         newly_killed   = set()
         newly_activted = set()
+        not_activated  = set()
         for active_node in active_set:
             self.attempts[active_node] += 1
 
@@ -93,15 +110,19 @@ class BIC(object):
             for neighbor in neighbors:
                 if rd.random() <= self.prop_prob(active_node, neighbor, t):
                     newly_activted.add(neighbor)
+                else:
+                    not_activated.add(neighbor)
 
-            if self.attempts[active_node] >= threshold:
+            if self.attempts[active_node] >= self.threshold:
                 killed_set.add(active_node)
                 newly_killed.add(active_node)
 
         for killed_node in newly_killed:
             active_set.remove(killed_node)
+            self.opinion[killed_node] = 1.0
         for activated_node in newly_activted:
             active_set.add(activated_node)
+            self.opinion[activated_node] = 1.0
 
         new_opinion = self.opinion.copy()
         for active_node in active_set:
@@ -116,10 +137,11 @@ class BIC(object):
                 else:
                     new_opinion[neighbor] = self.general_update(neighbor, t)
         
-
+        # Update opinion, determine if the diffusion process has saturated, get visited, nodes, and return.
         self.opinion = new_opinion
-
-        return active_set, killed_set
+        done = len(active_set) == 0
+        visited = not_activated.union(active_set).union(killed_set)
+        return active_set, killed_set, visited, done
             
         '''
         new_active_set = set(active_set.copy())
@@ -161,8 +183,8 @@ class BIC(object):
 
 
     def general_update(self, node, t):
-        """Perform a GENERALIZED update for the given user node's opinion. This update 
-           is for cases where there is no incurred penalty.
+        """Perform a GENERALIZED update for the given user node's opinion. This update is for cases where there is 
+           no incurred penalty.
 
         Parameters
         ----------

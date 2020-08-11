@@ -20,7 +20,7 @@ def degree_solution(model, n_seeds):
     score = {}
     for node in model.graph.nodes():
         score[node] = model.graph.degree(node)
-    return nlargest(n_seeds, score, key=score.get)
+    return set(nlargest(n_seeds, score, key=score.get))
 
 def min_opinion_solution(model, n_seeds):
     """Select the chosen number of nodes with minimal opinion in the OSN.
@@ -38,7 +38,7 @@ def min_opinion_solution(model, n_seeds):
         Set of seed nodes.
     """
     ranker = lambda node: model.init_opinion[node]
-    return sorted(list(model.graph.nodes()), key=ranker)[:n_seeds]
+    return set(sorted(list(model.graph.nodes()), key=ranker)[:n_seeds])
 
 def random_solution(model, n_seeds):
     """Select a random subset of nodes for seeding.
@@ -55,4 +55,4 @@ def random_solution(model, n_seeds):
     set
         Set of node IDs that were selected to be seeds.
     """
-    return random.sample(model.graph.nodes, n_seeds)
+    return set(random.sample(model.graph.nodes, n_seeds))

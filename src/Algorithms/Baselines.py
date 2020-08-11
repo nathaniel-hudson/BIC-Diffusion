@@ -1,7 +1,8 @@
 import networkx as nx
+import math
 import random
 
-from hypergraph import hypergraph
+from .hypergraph import hypergraph
 
 # from halp.undirected_hypergraph import UndirectedHypergraph
 
@@ -69,8 +70,9 @@ def LAIM_solution(model, n_seeds, max_it=10, theta=0.1):
     return set()
 
 
-def TIM_solution(model, n_seeds):
-    """Implementation of the TIM^{+} algorithm proposed by Borgs et al. in 2014 in the paper entitled "Maximizing Social Influence in Nearly Optimal Time".
+def TIM_solution(model, n_seeds, time_horizon=100, epsilon=0.5):
+    """Implementation of the TIM^{+} algorithm proposed by Borgs et al. in 2014 in the paper entitled "Maximizing Social 
+       Influence in Nearly Optimal Time".
 
     Parameters
     ----------
@@ -85,45 +87,40 @@ def TIM_solution(model, n_seeds):
         Nodes selected to be seeds.
     """
 
-    ## NOTE: This should be functional, now.
-    def _build_hypergraph(rounds):
+    def build_hypergraph(rounds):
         transpose  = model.graph.reverse()
-        hypergraph = hypergraph()
-        hypergraph.add_nodes(model.graph.nodes())
+        h_graph = hypergraph()
+        h_graph.add_nodes(model.graph.nodes())
         
         for _ in range(rounds):
-            discovered_nodes = set()
+            seed = set(random.choice(model.graph.nodes()))
             model.prepare()
-            timestep = 1
+            _, _, visited = model.simulate(seed, time_horizon)
+            h_graph.add_edge(visited)
 
-            while True:
-                u = random.choice(graph.model.nodes)
-                _, visited = model.diffuse(set([u]), timestep) ## TODO: Adjust diffusion model to also provide visited.
-                timestep += 1
-                if visited == discovered_nodes:
-                    break
-                else:
-                    discovered_nodes = discovered_nodes.union(visited)
-
-            hypergraph.add_edge(discovered_nodes)
-
-        return hypergraph
+        return h_graph
                     
-    def build_set_set(hypergraph, n_seeds):
+    def build_seed_set(h_graph, n_seeds):
         seed_set = set()
         for i in range(n_seeds):
             degree_rank = {
-                node_id: hypergraph.degree(node_id)
-                for node_id in hypergraph.nodes
+                node_id: h_graph.degree(node_id)
+                for node_id in h_graph.nodes
             }
             node_id = max(degree_rank, key=degree_rank.get)
             seed_set.add(node_id)
-            hypergraph.delete_node_and_incident_edges(node_id)
+            h_graph.delete_node_and_incident_edges(node_id)
         return seed_set
 
-
-    m, n = model.graph.number_of_edges, model.graph.number_of_nodes
-    rounds = 144 * (m + n) * epsilon ** (-3) * math.log(n, base=2)
-    hypergraph = build_hypergraph(rounds)
-    return build_set_set(hypergraph, n_seeds)
+    # NOTE: Rounds is the number of DFS steps allowed for simulation. From the paper:
+    #       "This simulation process is performed as described in Section 2: we begin at a random node \(u\) and proceed 
+    #        via  depth-first  search,  where  each  encountered  edge \(e\) is traversed independently with probability 
+    #        \(p_e\)...  The  BuildHypergraph  subroutine  takes as input a bound R on its runtime; we continue building 
+    #        edges  until  a  total  of \(R\) steps has been taken by the simula- tion process. (Note that the number of 
+    #        steps taken  by the  process is equal to the number of edges considered by the depth-first search process). 
+    #        Once  \(R\) steps  have  been  taken  in  total  over all simulations, we return the resulting hypergraph."
+    m, n = model.graph.number_of_edges(), model.graph.number_of_nodes()
+    rounds  = 144## int(144 * (m + n) * epsilon ** (-3) * math.log(n, 2)) 
+    h_graph = build_hypergraph(rounds)
+    return build_seed_set(h_graph, n_seeds)
 
