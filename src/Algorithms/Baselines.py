@@ -6,7 +6,7 @@ from .hypergraph import hypergraph
 
 # from halp.undirected_hypergraph import UndirectedHypergraph
 
-def IMM_solution(model, n_seeds):
+def IMM_solution(model, n_seeds, epsilon=0.0, ell=1.0):
     """Implementation of the LAIM algorithm proposed by Tang et al. in 2015 in the paper entitled "Influence 
        Maximization in Near-Linear Time: A Martingale Approach".
 
@@ -24,6 +24,9 @@ def IMM_solution(model, n_seeds):
     """
     ## NOTE: Currently, this is of least priority. The LAIM algorithm outperforms it, is more state-of-the-art, and we have
     ##       C++ code to translate into Python code to go off of.
+    ell = ell * (1.0 + log(2)/log(len(model.graph)))
+    R = sampling(model.graph, n_seeds, epsilon, ell)
+    S = node_selection(R, n_seeds)
     return set()
 
 
@@ -87,16 +90,38 @@ def TIM_solution(model, n_seeds, time_horizon=100, epsilon=0.5):
         Nodes selected to be seeds.
     """
 
-    def build_hypergraph(rounds):
+    def BIC_DFS(model, start, R):
+        visited, stack = set(), [start]
+        while stack and R > 0:
+            node = stack.pop()
+            if node not in visited:
+                visited.add(node)
+                for neighbor in model.graph.neighbors(node):
+                    pp = model.prop_prob(node, neighbor, 1, use_attempts=False)
+                    if random.random() <= pp:
+                        stack.append(neighbor)
+                    R -= 1
+                    if R <= 0:
+                        continue
+        return visited.union({start}), R
+
+
+    def build_hypergraph(r_steps):
         transpose  = model.graph.reverse()
         h_graph = hypergraph()
         h_graph.add_nodes(model.graph.nodes())
         
+        while r_steps > 0:
+            node_u = random.choice(list(model.graph.nodes()))
+            visited, r_steps = BIC_DFS(model, node_u, r_steps)
+            h_graph.add_edge(visited)
+        """
         for _ in range(rounds):
             seed = set(random.choice(model.graph.nodes()))
             model.prepare()
             _, _, visited = model.simulate(seed, time_horizon)
             h_graph.add_edge(visited)
+        """
 
         return h_graph
                     
@@ -116,11 +141,13 @@ def TIM_solution(model, n_seeds, time_horizon=100, epsilon=0.5):
     #       "This simulation process is performed as described in Section 2: we begin at a random node \(u\) and proceed 
     #        via  depth-first  search,  where  each  encountered  edge \(e\) is traversed independently with probability 
     #        \(p_e\)...  The  BuildHypergraph  subroutine  takes as input a bound R on its runtime; we continue building 
-    #        edges  until  a  total  of \(R\) steps has been taken by the simula- tion process. (Note that the number of 
+    #        edges  until  a  total  of \(R\) steps  has  been taken by the simulation process. (Note that the number of 
     #        steps taken  by the  process is equal to the number of edges considered by the depth-first search process). 
     #        Once  \(R\) steps  have  been  taken  in  total  over all simulations, we return the resulting hypergraph."
+    model.prepare()
     m, n = model.graph.number_of_edges(), model.graph.number_of_nodes()
     rounds  = 144## int(144 * (m + n) * epsilon ** (-3) * math.log(n, 2)) 
     h_graph = build_hypergraph(rounds)
+    model.prepared = False
     return build_seed_set(h_graph, n_seeds)
 

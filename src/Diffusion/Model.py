@@ -1,4 +1,3 @@
-import Constants
 import datetime
 import numpy    as np
 import pandas   as pd
@@ -6,6 +5,7 @@ import random   as rd
 import networkx as nx
 
 from scipy.stats import arcsine, uniform
+from .Constants import *
 
 class BIC(object):
 
@@ -58,10 +58,32 @@ class BIC(object):
 
 
     def total_opinion(self):
+        """Return the total current opinion over all nodes in the network.
+
+        Returns
+        -------
+        float
+            Total opinion.
+        """
         return sum(self.opinion[node] for node in self.graph.nodes())
 
 
     def simulate(self, seed_set, time_horizon):
+        """Run a simulation over a series of diffusion steps.
+
+        Parameters
+        ----------
+        seed_set : set
+            Nodes to be initially activated to begin opinion diffusion.
+        time_horizon : int
+            Number of maximum time-steps allowed (diffusion can end sooner due to saturation).
+
+        Returns
+        -------
+        (total_opinion: float, activated_set: set, visited_set: set)
+            A 3-tuple containing the total opinion by the end of the simulation, the set of activated nodes, and the set
+            of visited nodes.
+        """
         assert self.prepared, 'Need to run Model.prepare() before simulating.'
 
         active_set = seed_set if isinstance(seed_set, set) else set(seed_set)
@@ -76,10 +98,10 @@ class BIC(object):
                 break
 
         total_opinion = self.total_opinion()
-        activated = active_set.union(killed_set)
+        activated_set = active_set.union(killed_set)
         self.prepared = False
         
-        return total_opinion, activated, visited_set
+        return total_opinion, activated_set, visited_set
 
 
     def diffuse(self, active_set, killed_set, t):
@@ -305,7 +327,7 @@ class BIC(object):
             (1 - abs(self.init_opinion[source] - self.opinion[target]))
 
 
-    def behavioral_inf(self, user, coeffs=Constants.LAMBDA_DEFAULT):
+    def behavioral_inf(self, user, coeffs=LAMBDA_DEFAULT):
         """Calculates the impact of FFM factors (behavior) on propagation probabilities.
 
         Parameters

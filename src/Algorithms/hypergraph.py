@@ -31,17 +31,6 @@ class hypergraph:
         for node_id in node_set:
             self.add_node(node_id)
 
-    
-    def remove_node(self, node_id):
-        assert node_id in self.nodes, \
-            '`node_id` is not in hypergraph.'
-
-        for edge_id in self._node_edgesets[node_id]:
-            self.edges[edge_id].remove(node_id)
-
-        del self._node_edgesets[node_id]
-        self.nodes.remove(node_id)
-
 
     def add_edge(self, node_set, edge_label=None):
         assert isinstance(node_set, Iterable), \
@@ -60,10 +49,21 @@ class hypergraph:
         self.edges[edge_label] = set(node_set)
         self.n_edges += 1
 
+    
+    def remove_node(self, node_id):
+        assert node_id in self.nodes, \
+            '`node_id` is not in hypergraph.'
+
+        for edge_id in self._node_edgesets[node_id]:
+            self.edges[edge_id].remove(node_id)
+
+        del self._node_edgesets[node_id]
+        self.nodes.remove(node_id)
+
 
     def remove_edge(self, edge_id):
         for node in self.edges[edge_id]:
-            self._node_edgesets.remove(edge_id)
+            self._node_edgesets[node].remove(edge_id)
 
         del self.edges[edge_id]
 
@@ -92,11 +92,12 @@ class hypergraph:
 
 
     def delete_node_and_incident_edges(self, node_id):
+        ## NOTE: Error is happening here.
         assert node_id in self.nodes, 'Parameter `node_id` must be in the hypergraph.'
 
         for edge_id in self._node_edgesets[node_id]:
             self.remove_edge(edge_id)
-        self.remove_node(node_id)
+        self.remove_node(node_id) ## <--| Error is here. (NOTE)  
 
 
     def degree(self, node_id):
