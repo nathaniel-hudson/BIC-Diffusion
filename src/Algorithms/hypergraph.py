@@ -95,7 +95,8 @@ class hypergraph:
         ## NOTE: Error is happening here.
         assert node_id in self.nodes, 'Parameter `node_id` must be in the hypergraph.'
 
-        for edge_id in self._node_edgesets[node_id]:
+        edgeset = self._node_edgesets[node_id].copy()
+        for edge_id in edgeset:
             self.remove_edge(edge_id)
         self.remove_node(node_id) ## <--| Error is here. (NOTE)  
 

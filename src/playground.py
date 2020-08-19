@@ -1,53 +1,53 @@
+import matplotlib.pyplot as plt
 import networkx as nx
 import random
+import seaborn as sns
 import time
 
 import Simulation
 
 from Algorithms.Baselines import *
+from Algorithms.Heuristics import * 
+
 from Diffusion.Model import BIC
 
-n_trials = 50
+sns.set_style("darkgrid")
+
+n_trials = 5#50
 seed_sizes = list(range(0, 100+1, 10))
 seed_sizes[0] = 1
 time_horizon = 100
-topo_code = "eu-core" #"amazon"
 uniform = random.random
 
-TIM_start = time.time()
-df_TIM = Simulation.run(
-    topo_code=topo_code, 
-    algorithm=TIM_solution, 
-    seed_sizes=seed_sizes, 
-    time_horizon=time_horizon, 
-    n_trials=n_trials, 
-    ffm_distr_func=uniform,
-    opinion_distr_func=uniform,
-    random_seed=None,#random_seed, 
-    use_communities=False,
-    out_dir=None
-)
-TIM_runtime = time.time() - TIM_start
-print(f"\n<> Simulation using `{TIM_solution.__name__}` took {TIM_runtime:0.5f} seconds.")
+
+#graph = nx.karate_club_graph()
+graph = nx.barabasi_albert_graph(100, 6)
+ffm = {node: {factor: random.random() for factor in "OCEAN"} for node in graph.nodes()}
+opinion = [random.random() for node in graph.nodes()]
+
+model = BIC(graph, ffm, opinion)
+start = time.time()
+seed_set = TIM_solution(model, 5)
+end = time.time()
+model.prepare()
+opinion, activated, visited = model.simulate(seed_set, 100)
+
+print("Total Opinion: {}\nActivated nodes: {}\nVisited nodes: {}\nTIM+ runtime: {:0.5f}".format(
+    opinion, len(activated), len(visited), end - start
+))
 
 exit(0)
 
+sns.lineplot(
+    x="seed_size", y="opinion", style="algorithm", hue="algorithm", markers=True, err_style="bars", data=results
+)
+plt.title("TIM+ Solution: Opinion")
+plt.show()
 
-graph = nx.barabasi_albert_graph(1005, 20)
-seeds = set(random.sample(graph.nodes(), k=100))
-ffm = {node: {factor: random.random() for factor in "OCEAN"} for node in graph.nodes()}
-opinion = [random.random() for node in graph.nodes()]
-t_horizon = 100
+sns.lineplot(
+    x="seed_size", y="activated", style="algorithm", hue="algorithm", markers=True, err_style="bars",data=results
+)
+plt.title("TIM+ Solution: Activation")
+plt.show()
 
-model = BIC(graph, ffm, opinion)
-model.prepare(threshold=10)
-
-template = "Number of active nodes: {}, Number of killed nodes: {}, Number of unactivated nodes: {}, Total opinion: {}"
-active_set = seeds
-killed_set = set()
-for tstep in range(t_horizon):
-    print(template.format(
-        len(active_set),  len(killed_set),  len(graph) - len(active_set.union(killed_set)),  
-        model.total_opinion()
-    ))
-    active_set, killed_set = model.diffuse(active_set, killed_set, tstep)
+print(results.head())

@@ -164,44 +164,6 @@ class BIC(object):
         done = len(active_set) == 0
         visited = not_activated.union(active_set).union(killed_set)
         return active_set, killed_set, visited, done
-            
-        '''
-        new_active_set = set(active_set.copy())
-        activated = set()
-        to_penalize = set()
-
-        ## Iterate through each activated node in `active_set` to perform activation.
-        for node in set(active_set):
-            ## Grab the out-neighbors for the currently considered activated node and
-            ## iterate its attempts tracker.
-            neighbors = set(self.graph.neighbors(node))
-            self.attempts[node] += 1
-
-            ## If the current active node has not exceeded the threshold, attempt to
-            ## activate its unactived out-neighbors.
-            if self.attempts[node] <= threshold:
-                for out_neighbor in neighbors - active_set:
-                    if rd.random() <= self.prop_prob(node, out_neighbor, t, use_attempts=True):
-                        new_active_set.add(out_neighbor)
-                        activated.add(out_neighbor)
-                    else:
-                        to_penalize.add(out_neighbor)
-
-        ## Assign the (t+1) opinions for each user node.
-        for node in self.graph.nodes():
-            if node in activated:
-                self.opinion[t+1][node] = 1.0
-            elif node in to_penalize:
-                self.opinion[t+1][node] = self.penalized_update(node, t)
-            else:
-                self.opinion[t+1][node] = self.general_update(node, t)
-        '''
-
-        # Record all reached nodes (i.e., active/activated nodes and nodes that failed 
-        # to activate).
-        visited = new_active_set.union(to_penalize)
-
-        return new_active_set, visited
 
 
     def general_update(self, node, t):
@@ -356,7 +318,7 @@ class BIC(object):
         new_max = 1.0
         new_min = 0.0
 
-        if old_min != old_max and new_min != new_max:
+        if (old_min != old_max) and (new_min != new_max):
             influence = (((beta - old_min) * (new_max - new_min)) /
                         (old_max - old_min)) + new_min
         else:

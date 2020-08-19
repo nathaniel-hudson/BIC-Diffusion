@@ -90,38 +90,34 @@ def TIM_solution(model, n_seeds, time_horizon=100, epsilon=0.5):
         Nodes selected to be seeds.
     """
 
-    def BIC_DFS(model, start, R):
+    def BIC_DFS(model, graph_transpose, start, R):
         visited, stack = set(), [start]
         while stack and R > 0:
             node = stack.pop()
             if node not in visited:
                 visited.add(node)
-                for neighbor in model.graph.neighbors(node):
+                for neighbor in graph_transpose.neighbors(node):
+                    if R <= 0:
+                        break
                     pp = model.prop_prob(node, neighbor, 1, use_attempts=False)
                     if random.random() <= pp:
                         stack.append(neighbor)
                     R -= 1
-                    if R <= 0:
-                        continue
         return visited.union({start}), R
 
 
     def build_hypergraph(r_steps):
-        transpose  = model.graph.reverse()
+        if nx.is_directed(model.graph):
+            transpose  = model.graph.reverse()
+        else:
+            transpose = model.graph.copy()
         h_graph = hypergraph()
-        h_graph.add_nodes(model.graph.nodes())
+        h_graph.add_nodes(transpose.nodes())
         
         while r_steps > 0:
-            node_u = random.choice(list(model.graph.nodes()))
-            visited, r_steps = BIC_DFS(model, node_u, r_steps)
+            node_u = random.choice(list(transpose.nodes()))
+            visited, r_steps = BIC_DFS(model, transpose, node_u, r_steps)
             h_graph.add_edge(visited)
-        """
-        for _ in range(rounds):
-            seed = set(random.choice(model.graph.nodes()))
-            model.prepare()
-            _, _, visited = model.simulate(seed, time_horizon)
-            h_graph.add_edge(visited)
-        """
 
         return h_graph
                     
@@ -146,7 +142,7 @@ def TIM_solution(model, n_seeds, time_horizon=100, epsilon=0.5):
     #        Once  \(R\) steps  have  been  taken  in  total  over all simulations, we return the resulting hypergraph."
     model.prepare()
     m, n = model.graph.number_of_edges(), model.graph.number_of_nodes()
-    rounds  = 144## int(144 * (m + n) * epsilon ** (-3) * math.log(n, 2)) 
+    rounds  = int(144 * (m + n) * epsilon ** (-3) * math.log(n, 2)) 
     h_graph = build_hypergraph(rounds)
     model.prepared = False
     return build_seed_set(h_graph, n_seeds)
