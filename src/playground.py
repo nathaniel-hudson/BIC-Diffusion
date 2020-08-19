@@ -6,8 +6,9 @@ import time
 
 import Simulation
 
-from Algorithms.Baselines import *
-from Algorithms.Heuristics import * 
+from Algorithms.Baselines  import *
+from Algorithms.Heuristics import *
+from Algorithms.LAIM       import *
 
 from Diffusion.Model import BIC
 
@@ -26,13 +27,15 @@ ffm = {node: {factor: random.random() for factor in "OCEAN"} for node in graph.n
 opinion = [random.random() for node in graph.nodes()]
 
 model = BIC(graph, ffm, opinion)
+model.prepare()
 start = time.time()
-seed_set = TIM_solution(model, 5)
+# seed_set = TIM_solution(model, 5)
+seed_set = LAIM_solution(model, 10)
 end = time.time()
 model.prepare()
 opinion, activated, visited = model.simulate(seed_set, 100)
 
-print("Total Opinion: {}\nActivated nodes: {}\nVisited nodes: {}\nTIM+ runtime: {:0.5f}".format(
+print("Total Opinion: {}\nActivated nodes: {}\nVisited nodes: {}\nLAIM runtime: {:0.5f}".format(
     opinion, len(activated), len(visited), end - start
 ))
 
