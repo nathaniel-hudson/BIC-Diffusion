@@ -29,8 +29,8 @@ class BIC(object):
         self.ffm   = ffm     # Behavioral (FFM) parameters.
         self.init_opinion = init_opinion  # Initial opinion vector.
 
-        # Initialize the bevahioral influence vector, to avoid having to constantly compute it for each user since 
-        # it's a constant value.
+        # Initialize the bevahioral influence vector, to avoid having to constantly 
+        # compute it for each user since it's a constant value.
         self.ffm_inf = np.array([self.behavioral_inf(user) for user in self.graph.nodes])
         self.prepared = False
 
@@ -76,12 +76,14 @@ class BIC(object):
         seed_set : set
             Nodes to be initially activated to begin opinion diffusion.
         time_horizon : int
-            Number of maximum time-steps allowed (diffusion can end sooner due to saturation).
+            Number of maximum time-steps allowed (diffusion can end sooner due to satu-
+            ration).
 
         Returns
         -------
         (total_opinion: float, activated_set: set, visited_set: set)
-            A 3-tuple containing the total opinion by the end of the simulation, the set of activated nodes, and the set
+            A 3-tuple containing the total opinion by the end of the simulation, the set 
+            of activated nodes, and the set
             of visited nodes.
         """
         assert self.prepared, 'Need to run Model.prepare() before simulating.'
@@ -117,7 +119,8 @@ class BIC(object):
         Returns
         -------
         (active_set: set, killed_set: set, visited: set, done: bool)
-            A tuple containing the the set of active/activated user nodes and user nodes that have been killed (i.e., 
+            A tuple containing the the set of active/activated user nodes and user nodes 
+            that have been killed (i.e., 
             can no longer activate neighbors).
         """
         assert self.prepared, 'Need to run Model.prepare() before diffusing.'
@@ -159,7 +162,8 @@ class BIC(object):
                 else:
                     new_opinion[neighbor] = self.general_update(neighbor, t)
         
-        # Update opinion, determine if the diffusion process has saturated, get visited, nodes, and return.
+        # Update opinion, determine if the diffusion process has saturated, get visited, 
+        # nodes, and return.
         self.opinion = new_opinion
         done = len(active_set) == 0
         visited = not_activated.union(active_set).union(killed_set)
@@ -167,8 +171,8 @@ class BIC(object):
 
 
     def general_update(self, node, t):
-        """Perform a GENERALIZED update for the given user node's opinion. This update is for cases where there is 
-           no incurred penalty.
+        """Perform a GENERALIZED update for the given user node's opinion. This update is 
+           for cases where there is no incurred penalty.
 
         Parameters
         ----------

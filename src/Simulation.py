@@ -13,13 +13,18 @@ from Diffusion.Model import BIC
 from tqdm            import tqdm
 from tqdm            import tqdm_notebook as tqdm_note
 
-COLUMNS = ["trial", "opinion", "activated", "algorithm", "seed_size", "algorithm_time"]
+COLUMNS = [
+    "trial", "opinion", "activated", "algorithm", "seed_size", "algorithm_time", 
+    "opinion_distr_func", "ffm_distr_func", "use_communities"
+]
 
 
 def get_network_loading_params(topo_code):
-    """This function is used to retrieve the necessary data/params in order to load a network topology. This function
-       will provide params regarding the graph-type (directed or undirected), the path to the network topology, the
-       path to the community file, and a lambda function that can be used to retrieve the community dictionary.
+    """This function is used to retrieve the necessary data/params in order to load a 
+       network topology. This function will provide params regarding the graph-type 
+       (directed or undirected), the path to the network topology, the path to the 
+       community file, and a lambda function that can be used to retrieve the community 
+       dictionary.
 
     Parameters
     ----------
@@ -29,8 +34,9 @@ def get_network_loading_params(topo_code):
     Returns
     -------
     (class, str, str, func)
-        A 4-tuple containing the following items: (1) graph class object of either nx.Graph or nx.DiGraph, (2) path to
-        network topology, (3) path to community file, and (4) function to parse community into dictionary.
+        A 4-tuple containing the following items: (1) graph class object of either 
+        nx.Graph or nx.DiGraph, (2) path to network topology, (3) path to community file, 
+        and (4) function to parse community into dictionary.
 
     Raises
     ------
@@ -42,43 +48,50 @@ def get_network_loading_params(topo_code):
         graph_type = nx.Graph
         graph_path = os.path.join(base_path, "com-amazon.ungraph.txt.gz")
         comm_path  = os.path.join(base_path, "com-amazon.top5000.cmty.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_line(comm_path, mapping, n_line_prefix=0)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
 
     elif topo_code == "dblp":
         graph_type = nx.Graph
         graph_path = os.path.join(base_path, "com-dblp.ungraph.txt.gz")
         comm_path  = os.path.join(base_path, "com-dblp.top5000.cmty.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_line(comm_path, mapping, n_line_prefix=0)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
 
     elif topo_code == "eu-core":
         graph_type = nx.DiGraph
         graph_path = os.path.join(base_path, "email-Eu-core.txt.gz")
         comm_path  = os.path.join(base_path, "email-Eu-core-department-labels.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_pairs(comm_path, mapping)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_pairs(comm_path, mapping)
 
     elif topo_code == "lj":
         graph_type = nx.Graph
         graph_path = os.path.join(base_path, "com-lj.ungraph.txt.gz")
         comm_path  = os.path.join(base_path, "com-lj.top5000.cmty.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_line(comm_path, mapping, n_line_prefix=0)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
 
     elif topo_code == "orkut":
         graph_type = nx.Graph
         graph_path = os.path.join(base_path, "com-orkut.ungraph.txt.gz")
         comm_path  = os.path.join(base_path, "com-orkut.top5000.cmty.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_line(comm_path, mapping, n_line_prefix=0)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
 
     elif topo_code == "youtube":
         graph_type = nx.Graph
         graph_path = os.path.join(base_path, "com-youtube.ungraph.txt.gz")
         comm_path  = os.path.join(base_path, "com-youtube.top5000.cmty.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_line(comm_path, mapping, n_line_prefix=0)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
 
     elif topo_code == "wiki":
         graph_type = nx.DiGraph
         graph_path = os.path.join(base_path, "wiki-topcats.txt.gz")
         comm_path  = os.path.join(base_path, "wiki-topcats-categories.txt.gz")
-        comm_func  = lambda comm_path, mapping: load_community_by_line(comm_path, mapping, n_line_prefix=1)
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=1)
 
     else:
         raise ValueError("Invalid value for parameter `topo_code`.")
@@ -111,7 +124,8 @@ def load_community_by_line(comm_path, mapping=None, n_line_prefix=0):
                 i += 1
         else:
             for line in f:
-                    communities[i] = [mapping[int(node)] for node in line[n_line_prefix:].split()]
+                    communities[i] = [mapping[int(node)] 
+                                      for node in line[n_line_prefix:].split()]
                     i += 1
 
     return communities
@@ -170,20 +184,22 @@ def load_graph_and_communities(topo_code):
     return graph, communities
     
 
-def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, ffm_distr_func, opinion_distr_func, 
-        threshold=5, random_seed=None, use_communities=False, out_dir=None, mode="console"):
-    """Run an experiment using a specific algorithm and a topology. The parameters tightly define the experimental setup 
-       in a self-explanatory fashion. The function outputs the results into the "../out/results/`out_dir`" directory 
-       with a .CSV file dedicated to the results for this one result. The resulting CSV files can be merged using Pandas 
-       API to compare the results across algorithms.
+def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_func, 
+        ffm_distr_func=random.random, threshold=5, random_seed=None, use_communities=False,
+        out_dir=None, mode="console", pbar_desc=None):
+    """Run an experiment using a specific algorithm and a topology. The parameters tightly 
+       define the experimental setup in a self-explanatory fashion. The function outputs 
+       the results into the "../out/results/`out_dir`" directory with a .CSV file dedicated
+       to the results for this one result. The resulting CSV files can be merged using 
+       Pandas API to compare the results across algorithms.
 
     Parameters
     ----------
     topo_code : str
         The code for the real-world topology to be considered.
     algorithm : func
-        Pointer to the function that you wish to run --- must take a BIC model and int (for # seed) as input and return 
-        a set.
+        Pointer to the function that you wish to run --- must take a BIC model and int 
+        (for # seed) as input and return a set.
     seed_sizes : list/set
         Iterable object containing the sizes of seed sets to be considered.
     time_horizon : int
@@ -195,21 +211,20 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, ffm_distr_func
     opinion_distr_func : func
         Random generator for opinion values.
     random_seed : int, optional
-        Random seed, if provided, to ensure fair comparisons (called before each graph is instantiated), by default
-        None.
+        Random seed, if provided, to ensure fair comparisons (called before each graph is 
+        instantiated), by default None.
     use_communities : bool, optional
-        True if you want to consider community opinion initialization, False otherwise, by default False.
+        True if you want to consider community opinion initialization, False otherwise, by
+        default False.
     out_dir : str, None
-        Output directory for the results of this experiment if provided (should be standard across algorithms for a set 
-        of experiments); do not save data if None, by default None.
-    mode : str, "console"
-        If the value of `mode` is "notebook" then use the appropriate `tqdm` API, by default "console".
+        Output directory for the results of this experiment if provided (should be stand-
+        ard across algorithms for a set of experiments); do not save data if None, by 
+        default None.
+    pbar_desc : str, "None"
+        The description used for the progress bar via `tqdm` if not None, by default None.
     """
     data = {column: [] for column in COLUMNS}
-    if mode == "notebook":
-        pbar = tqdm_note(total=n_trials * len(seed_sizes))
-    else:
-        pbar = tqdm(total=n_trials * len(seed_sizes), file=sys.stdout)
+    pbar = tqdm(total=n_trials*len(seed_sizes), file=sys.stdout, desc=pbar_desc)
 
     if use_communities:
         graph, communities = load_graph_and_communities(topo_code)
@@ -218,7 +233,6 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, ffm_distr_func
 
     for n_seeds in seed_sizes:
         if random_seed is not None: random.seed(random_seed)
-
         for trial in range(n_trials):
             # Initialize the FFM factors and the opinion vector.
             ffm = initialize_ffm_factors(graph, distr_func=ffm_distr_func)
@@ -239,10 +253,9 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, ffm_distr_func
             data["algorithm"].append(algorithm.__name__)
             data["seed_size"].append(n_seeds)
             data["algorithm_time"].append(alg_runtime)
-
-            # Update the progress bar.
-            template = "{}, K = {}, Trial ({}/{})"
-            pbar.set_description(template.format(algorithm.__name__, n_seeds, trial+1, n_trials))
+            data["opinion_distr_func"].append(opinion.__name__)
+            data["ffm_distr_func"].append(ffm_distr_func.__name__)
+            data["use_communities"].append(use_communities)
             pbar.update(1)
 
     ## Convert data dictionary to a pandas DataFrame and save.
