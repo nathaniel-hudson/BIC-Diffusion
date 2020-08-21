@@ -49,6 +49,7 @@ def find_next_pair(model, seed_set, max_iter, theta):
 
 
 def LAIM_solution(model, n_seeds, max_iter=5, theta=0.0001):
+    model.prepare()
     seed_arr = [0 for i in range(n_seeds)]
     seed_set = set()
     total_score = 0
@@ -58,11 +59,12 @@ def LAIM_solution(model, n_seeds, max_iter=5, theta=0.0001):
         seed_set.add(best_pair["key"])
         total_score += best_pair["value"]
 
+    model.prepared = False
     return seed_set
 
 
 def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
-
+    model.prepare()
     max_iter += 1
     p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
     for i in model.graph.nodes():
@@ -97,4 +99,5 @@ def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
         total_score += max_val
         p_arr[new_seed][max_iter] = 0
 
+    model.prepared = False
     return seeds

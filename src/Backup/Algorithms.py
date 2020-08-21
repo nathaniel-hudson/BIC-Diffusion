@@ -208,12 +208,8 @@ def IRIE(g, k, opinion, ffm, alpha=0.7):
     """
     S = set()
     V = set(g.nodes())
-    rank = {}
-    AP_S = {}
-    
-    for u in V:
-        rank[u] = 1
-        AP_S[u] = 0
+    rank = {1 for v in V}
+    AP_S = {0 for v in V}
 
     while len(S) < k:
         for v in V:
@@ -229,8 +225,8 @@ def IRIE(g, k, opinion, ffm, alpha=0.7):
         
         for i in range(5):
             for u in V:
-                rank[u] = (1 - AP_S[u]) * (1 + alpha * sum([BIC.prop_prob(g, u,
-                    v, 1, opinion, ffm, 0) * rank[v] for v in g.neighbors(u)]))
+                rank[u] = (1 - AP_S[u]) * (1 + alpha * \
+                    sum([BIC.prop_prob(g, u, v, 1, opinion, ffm, 0) * rank[v] for v in g.neighbors(u)]))
 
         temp = len(S)
         u = max(rank, key=rank.get)
