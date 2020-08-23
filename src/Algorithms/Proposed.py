@@ -78,11 +78,11 @@ def my_floydw(model):
     dist = np.zeros((len(model.graph), len(model.graph)))
     if nx.is_directed(model.graph):
         for (u,v) in model.graph.edges():
-            dist[u][v] = model.prop_prob(u, v, 0, use_attempts=False)
+            dist[u][v] = model.prop_prob(u, v, use_attempts=False)
     else:
         for (u,v) in model.graph.edges():
-            dist[u][v] = model.prop_prob(u, v, 0, use_attempts=False)
-            dist[u][v] = model.prop_prob(v, u, 0, use_attempts=False)
+            dist[u][v] = model.prop_prob(u, v, use_attempts=False)
+            dist[u][v] = model.prop_prob(v, u, use_attempts=False)
     
     for v in model.graph.nodes():
         dist[v][v] = 1.0

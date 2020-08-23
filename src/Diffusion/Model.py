@@ -133,7 +133,7 @@ class BIC(object):
 
             neighbors = set(self.graph.neighbors(active_node)) - active_set
             for neighbor in neighbors:
-                if rd.random() <= self.prop_prob(active_node, neighbor, t):
+                if rd.random() <= self.prop_prob(active_node, neighbor):
                     newly_activted.add(neighbor)
                 else:
                     not_activated.add(neighbor)
@@ -235,7 +235,7 @@ class BIC(object):
         return num / den
 
 
-    def prop_prob(self, source, target, t, use_attempts=True):
+    def prop_prob(self, source, target, use_attempts=True):
         """Calculates the propagation probability for `source` to activate `target`.
 
         Parameters
@@ -246,7 +246,7 @@ class BIC(object):
             User node ID for the unactivated target node.
         t : int
             Current time-step during a simulation over a given time horizon.
-        attempt : bool
+        attempt : bool, optional
             Use the attempt counter to anneal propagation probability if True, 
             (default=True).
 
@@ -259,11 +259,11 @@ class BIC(object):
                        if not nx.is_directed(self.graph) \
                        else self.graph.predecessors(target)
 
-        opinion_inf = self.opinion_inf(source, target, t)
+        opinion_inf = self.opinion_inf(source, target)
         behavio_inf = self.ffm_inf[target]
 
         num = behavio_inf * opinion_inf
-        den = sum([self.opinion_inf(in_neighbor, target, t)
+        den = sum([self.opinion_inf(in_neighbor, target)
                    for in_neighbor in in_neighbors])
 
         if use_attempts == True:
@@ -272,7 +272,7 @@ class BIC(object):
             return 0 if den == 0 else (num/den)
 
 
-    def opinion_inf(self, source, target, t):
+    def opinion_inf(self, source, target):
         """Calculates the impact of opinion on propagation probabilities.
 
         Parameters
@@ -289,8 +289,15 @@ class BIC(object):
         float
             Impact of opinion on propagation probability.
         """
-        return self.opinion[target] * \
-            (1 - abs(self.init_opinion[source] - self.opinion[target]))
+        # In some cases, the `prop_prob()` function might be called without `prepare()`
+        # being called. As a result, references to `self.opinion` can be invalid. Thus,
+        # we need to do this check first.
+        if self.prepared:
+            return self.opinion[target] * \
+                (1 - abs(self.init_opinion[source] - self.opinion[target]))
+        else:
+            return self.init_opinion[target] * \
+                (1 - abs(self.init_opinion[source] - self.init_opinion[target]))
 
 
     def behavioral_inf(self, user, coeffs=LAMBDA_DEFAULT):

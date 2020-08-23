@@ -208,8 +208,8 @@ def IRIE(g, k, opinion, ffm, alpha=0.7):
     """
     S = set()
     V = set(g.nodes())
-    rank = {1 for v in V}
-    AP_S = {0 for v in V}
+    rank = {v: 1 for v in V}
+    AP_S = {v: 0 for v in V}
 
     while len(S) < k:
         for v in V:

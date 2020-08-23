@@ -188,9 +188,9 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_
         ffm_distr_func=random.random, threshold=5, random_seed=None, use_communities=False,
         out_dir=None, mode="console", pbar_desc=None):
     """Run an experiment using a specific algorithm and a topology. The parameters tightly 
-       define the experimental setup in a self-explanatory fashion. The function outputs 
-       the results into the "../out/results/`out_dir`" directory with a .CSV file dedicated
-       to the results for this one result. The resulting CSV files can be merged using 
+       define the experimental setup  in a self-explanatory  fashion. The function outputs 
+       the  results  into the  "../out/results/`out_dir`"  dir with  a .CSV file dedicated
+       to  the results  for  this one  result. The resulting CSV files can be merged using 
        Pandas API to compare the results across algorithms.
 
     Parameters
@@ -198,7 +198,7 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_
     topo_code : str
         The code for the real-world topology to be considered.
     algorithm : func
-        Pointer to the function that you wish to run --- must take a BIC model and int 
+        Pointer  to the function  that you  wish to run --- must  take a BIC model and int 
         (for # seed) as input and return a set.
     seed_sizes : list/set
         Iterable object containing the sizes of seed sets to be considered.
@@ -217,8 +217,8 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_
         True if you want to consider community opinion initialization, False otherwise, by
         default False.
     out_dir : str, None
-        Output directory for the results of this experiment if provided (should be stand-
-        ard across algorithms for a set of experiments); do not save data if None, by 
+        Output  directory for the results of this experiment if provided (should be stand-
+        ard across  algorithms  for a  set of experiments); do not  save data  if None, by 
         default None.
     pbar_desc : str, "None"
         The description used for the progress bar via `tqdm` if not None, by default None.
@@ -232,28 +232,30 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_
         graph, communities = load_graph(topo_code), None
 
     for n_seeds in seed_sizes:
-        if random_seed is not None: random.seed(random_seed)
+        # Initialize the FFM factors and the opinion vector.
+        if random_seed is not None: 
+            random.seed(random_seed * n_seeds)
+        ffm = initialize_ffm_factors(graph, distr_func=ffm_distr_func)
+        opinion = initialize_opinion(graph, communities, distr_func=opinion_distr_func)
+        
+        # Prepare the model, run seed selection algorithm, and run simulation.
+        model = BIC(graph, ffm, opinion)
+        start_time = time.time()
+        seed_set = algorithm(model, n_seeds)
+        alg_runtime = time.time() - start_time
+        random.seed(None) # NOTE: We only want to fix the FFM and opinion generation.
+
         for trial in range(n_trials):
-            # Initialize the FFM factors and the opinion vector.
-            ffm = initialize_ffm_factors(graph, distr_func=ffm_distr_func)
-            opinion = initialize_opinion(graph, communities, distr_func=opinion_distr_func)
-            
-            # Prepare the model, run seed selection algorithm, and run simulation.
-            model = BIC(graph, ffm, opinion)
-            start_time = time.time()
-            seed_set = algorithm(model, n_seeds)
-            alg_runtime = time.time() - start_time
+            # Add record to the data.
             model.prepare(threshold=threshold)
             total_opinion, activated, visited = model.simulate(seed_set, time_horizon)
-
-            # Add record to the data.
             data["trial"].append(trial)
             data["opinion"].append(total_opinion)
             data["activated"].append(len(activated))
             data["algorithm"].append(algorithm.__name__)
             data["seed_size"].append(n_seeds)
             data["algorithm_time"].append(alg_runtime)
-            data["opinion_distr_func"].append(opinion.__name__)
+            data["opinion_distr_func"].append(opinion_distr_func.__name__)
             data["ffm_distr_func"].append(ffm_distr_func.__name__)
             data["use_communities"].append(use_communities)
             pbar.update(1)

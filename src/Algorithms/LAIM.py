@@ -25,7 +25,7 @@ def find_next_pair(model, seed_set, max_iter, theta):
             k_out = nx.degree(model.graph, u)
             for v in model.graph.neighbors(u):
                 w1 = 1.0 / k_out
-                w2 = model.prop_prob(u, v, 1, use_attempts=False)
+                w2 = model.prop_prob(u, v, use_attempts=False)
                 potential1 = p_arr[v][iteration - 1]
                 potential2 = p[iteration - 2]
                 if (potential1 > theta) and (potential1 - w1 * potential2 > theta):
@@ -77,7 +77,7 @@ def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
             k_out = nx.degree(model.graph, u)
             for v in model.graph.neighbors(u):
                 w1 = 1.0 / k_out
-                w2 = model.prop_prob(u, v, 1, use_attempts=False)
+                w2 = model.prop_prob(u, v, use_attempts=False)
                 potential1 = p_arr[v][iteration - 1]
                 potential2 = p[iteration - 2]
                 if (potential1 > theta) and (potential1 - w1 * potential2 > theta):

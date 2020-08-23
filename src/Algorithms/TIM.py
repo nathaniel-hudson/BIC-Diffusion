@@ -75,7 +75,6 @@ def build_seed_set(args):
     return seed_set
 
 
-
 def build_hypergraph_node(args, u_start, hyperiiid, add_hyper_edge):
     n_visit_edge = 1
     if add_hyper_edge:
@@ -91,7 +90,7 @@ def build_hypergraph_node(args, u_start, hyperiiid, add_hyper_edge):
         u = args.queue.pop(0)
         for v in nx.neighbors(args.graph_t, u):
             n_visit_edge += 1
-            if random.random() > args.model.prop_prob(u, v, 1, use_attempts=False):
+            if random.random() > args.model.prop_prob(u, v, use_attempts=False):
                 continue
             if args.visit[v]:
                 continue
@@ -148,18 +147,20 @@ def refine_KPT(args, epsilon, ept):
     R = int((2 + epsilon) * (args.n_nodes * math.log(args.n_nodes)) / (epsilon ** 2 * ept))
     build_hypergraph(args, R)
 
+
 def node_selection(args, epsilon, opt):
     R = int((8 + 2 * epsilon) * (math.log(args.n_nodes) + math.log(2) + \
             args.n_nodes * logcnk(args.n_nodes, args.n_seeds)) / (epsilon ** 2 * opt))
     build_hypergraph(args, R)
     return build_seed_set(args)
 
-def TIM_solution(model, n_seeds, epsilon=0.5):
+
+def TIM_solution(model, n_seeds, epsilon=0.2):
+    ### NOTE: Use epsilon = 0.2 and ell = 1 (from the abstract of the paper)?
     # Initialize argument wrapper. This is to simplify the arg-passing  across the helper functions.
     args = ArgWrapper(model, n_seeds, epsilon)    
 
     # PART 1: KPT Estimation and then refiniing the KPT value.
-    model.prepare()
     kpt_star = kpt_estimation(args)
 
     # PART 2: Build initial seed set and measure the influence and the KPT score.
@@ -172,112 +173,4 @@ def TIM_solution(model, n_seeds, epsilon=0.5):
 
     # PART 3: Node selection.
     seed_set = node_selection(args, epsilon, kpt_plus)
-    model.prepared = False
     return seed_set
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################################################################################################################
-########################################################################################################################
-########################################################################################################################
-
-def TIM_solution_old(model, n_seeds, time_horizon=100, epsilon=0.5):
-    """Implementation of the TIM^{+} algorithm proposed by Borgs et al. in 2014 in the paper entitled "Maximizing Social 
-       Influence in Nearly Optimal Time".
-
-    Parameters
-    ----------
-    model : BIC_Model
-        Instance of the BIC model.
-    n_seeds : int
-        Number of seed nodes.
-
-    Returns
-    -------
-    set
-        Nodes selected to be seeds.
-    """
-
-    def BIC_DFS(model, graph_transpose, start, R):
-        visited, stack = set(), [start]
-        while stack and R > 0:
-            node = stack.pop()
-            if node not in visited:
-                visited.add(node)
-                for neighbor in graph_transpose.neighbors(node):
-                    if R <= 0:
-                        break
-                    pp = model.prop_prob(node, neighbor, 1, use_attempts=False)
-                    if random.random() <= pp:
-                        stack.append(neighbor)
-                    R -= 1
-        return visited.union({start}), R
-
-
-    def build_hypergraph(r_steps):
-        if nx.is_directed(model.graph):
-            transpose  = model.graph.reverse()
-        else:
-            transpose = model.graph.copy()
-        h_graph = hypergraph()
-        h_graph.add_nodes(transpose.nodes())
-        
-        while r_steps > 0:
-            node_u = random.choice(list(transpose.nodes()))
-            visited, r_steps = BIC_DFS(model, transpose, node_u, r_steps)
-            h_graph.add_edge(visited)
-
-        return h_graph
-                    
-    def build_seed_set(h_graph, n_seeds):
-        seed_set = set()
-        for i in range(n_seeds):
-            degree_rank = {
-                node_id: h_graph.degree(node_id)
-                for node_id in h_graph.nodes
-            }
-            node_id = max(degree_rank, key=degree_rank.get)
-            seed_set.add(node_id)
-            h_graph.delete_node_and_incident_edges(node_id)
-        return seed_set
-
-    # NOTE: Rounds is the number of DFS steps allowed for simulation. From the paper:
-    #       "This simulation process is performed as described in Section 2: we begin at a random node \(u\) and proceed 
-    #        via  depth-first  search,  where  each  encountered  edge \(e\) is traversed independently with probability 
-    #        \(p_e\)...  The  BuildHypergraph  subroutine  takes as input a bound R on its runtime; we continue building 
-    #        edges  until  a  total  of \(R\) steps  has  been taken by the simulation process. (Note that the number of 
-    #        steps taken  by the  process is equal to the number of edges considered by the depth-first search process). 
-    #        Once  \(R\) steps  have  been  taken  in  total  over all simulations, we return the resulting hypergraph."
-    model.prepare()
-    n_edges, n_nodes = model.graph.number_of_edges(), model.graph.number_of_nodes()
-    rounds  = int(144 * (n_edges + n_nodes) * epsilon ** (-3) * math.log(n_nodes, 2)) 
-    h_graph = build_hypergraph(rounds)
-    model.prepared = False
-    return build_seed_set(h_graph, n_seeds)
-
