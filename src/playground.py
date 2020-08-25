@@ -9,6 +9,7 @@ import Simulation
 from Algorithms.Heuristics import *
 from Algorithms.LAIM       import *
 from Algorithms.TIM        import TIM_solution
+from Algorithms.TIM_Plus   import TIM_plus_solution
 
 from Diffusion.Model import BIC
 
@@ -29,7 +30,10 @@ n_seeds = 50
 time_horizon = 100
 uniform = random.random
 
-graph = nx.gnm_random_graph(15000, 31000, directed=False) ## NOTE: This emulates the NETHEPT topology's density.
+n = 15000
+m = 31000
+
+graph = nx.gnm_random_graph(1500000, 31000000, directed=False) ## NOTE: This emulates the NETHEPT topology's density.
 ffm = {node: {factor: random.random() for factor in "OCEAN"} for node in graph.nodes()}
 opinion = [random.random() for node in graph.nodes()]
 
@@ -37,19 +41,19 @@ model = BIC(graph, ffm, opinion)
 model.prepare()
 
 start = time.time()
-seed_set = TIM_solution(model, n_seeds)
+seed_set = TIM_plus_solution(model, n_seeds)
 TIM_time = time.time() - start
 
-start = time.time()
-seed_set = LAIM_solution(model, n_seeds)
-LAIM_time = time.time() - start
+# start = time.time()
+# seed_set = LAIM_solution(model, n_seeds)
+# LAIM_time = time.time() - start
 
 start = time.time()
 seed_set = fast_LAIM_solution(model, n_seeds)
 fast_LAIM_time = time.time() - start
 
 print(f"\n\nTIM+ runtime:     {TIM_time:0.5f}")
-print(f"LAIM runtime:     {LAIM_time:0.5f}")
+# print(f"LAIM runtime:     {LAIM_time:0.5f}")
 print(f"FastLAIM runtime: {fast_LAIM_time:0.5f}")
 
 # model.prepare()
@@ -58,19 +62,3 @@ print(f"FastLAIM runtime: {fast_LAIM_time:0.5f}")
 # print("Total Opinion: {}\nActivated nodes: {}\nVisited nodes: {}\nLAIM runtime: {:0.5f}".format(
 #     opinion, len(activated), len(visited), end - start
 # ))
-
-exit(0)
-
-# sns.lineplot(
-#     x="seed_size", y="opinion", style="algorithm", hue="algorithm", markers=True, err_style="bars", data=results
-# )
-# plt.title("TIM+ Solution: Opinion")
-# plt.show()
-
-# sns.lineplot(
-#     x="seed_size", y="activated", style="algorithm", hue="algorithm", markers=True, err_style="bars",data=results
-# )
-# plt.title("TIM+ Solution: Activation")
-# plt.show()
-
-# print(results.head())
