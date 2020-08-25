@@ -14,9 +14,11 @@ from tqdm            import tqdm
 from tqdm            import tqdm_notebook as tqdm_note
 
 COLUMNS = [
-    "trial", "opinion", "activated", "algorithm", "seed_size", "algorithm_time", 
-    "opinion_distr_func", "ffm_distr_func", "use_communities"
+    "trial", "opinion", "activated", "visited", "algorithm", "seed_size", 
+    "algorithm_time", "opinion_distr_func", "ffm_distr_func", "use_communities"
 ]
+
+TOPO_CODES = ["amazon", "dblp", "eu-core", "lj", "orkut", "youtube", "wiki"]
 
 
 def get_network_loading_params(topo_code):
@@ -108,31 +110,28 @@ def get_relabel_mapping(graph):
     return mapping
 
 
-
 def initialize_ffm_factors(graph, distr_func=random.random):
     return {node: {factor: distr_func() for factor in "OCEAN"} for node in graph.nodes()}
 
 
-
 def load_community_by_line(comm_path, mapping=None, n_line_prefix=0):
-    communities = {}
+    comms = {}
     with gzip.open(comm_path, "r") as f:
         i = 0
         if mapping is None:
             for line in f:
-                communities[i] = [int(node) for node in line[n_line_prefix:].split()]
+                comms[i] = [int(node) for node in line.split()[n_line_prefix:]]
                 i += 1
         else:
             for line in f:
-                    communities[i] = [mapping[int(node)] 
-                                      for node in line[n_line_prefix:].split()]
-                    i += 1
+                comms[i] = [mapping[int(node)] for node in line.split()[n_line_prefix:]]
+                i += 1
 
-    return communities
+    return comms
 
 
 def load_community_by_pairs(comm_path, mapping=None):
-    communities = {}
+    comms = {}
     with gzip.open(comm_path, "r") as f:
         for line in f:
             node_idx, comm_idx = line.split()
@@ -140,12 +139,12 @@ def load_community_by_pairs(comm_path, mapping=None):
             if mapping is not None:
                 node_idx = mapping[node_idx]
 
-            if comm_idx not in communities:
-                communities[comm_idx] = []
+            if comm_idx not in comms:
+                comms[comm_idx] = []
 
-            communities[comm_idx].append(node_idx)
+            comms[comm_idx].append(node_idx)
     
-    return communities    
+    return comms    
 
 
 def initialize_opinion(graph, communities=None, distr_func=random.random):
@@ -252,6 +251,7 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_
             data["trial"].append(trial)
             data["opinion"].append(total_opinion)
             data["activated"].append(len(activated))
+            data["visited"].append(len(visited))
             data["algorithm"].append(algorithm.__name__)
             data["seed_size"].append(n_seeds)
             data["algorithm_time"].append(alg_runtime)

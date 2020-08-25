@@ -86,24 +86,24 @@ class BIC(object):
             of activated nodes, and the set
             of visited nodes.
         """
-        assert self.prepared, 'Need to run Model.prepare() before simulating.'
+        if not self.prepared:
+            self.prepare()
 
-        active_set = seed_set if isinstance(seed_set, set) else set(seed_set)
+        active_set = seed_set.copy() if isinstance(seed_set, set) else set(seed_set)
         killed_set = set()
         visited_set = set()
 
         ## Perform diffusion steps for the simulation.
-        for time_step in range(time_horizon+1):
-            active_set, killed_set, visited, done = self.diffuse(active_set, killed_set, time_step)
+        for t in range(time_horizon+1):
+            active_set, killed_set, visited, done = self.diffuse(active_set, killed_set, t)
             visited_set = visited_set.union(visited)
             if done:
                 break
 
-        total_opinion = self.total_opinion()
         activated_set = active_set.union(killed_set)
         self.prepared = False
         
-        return total_opinion, activated_set, visited_set
+        return self.total_opinion(), activated_set, visited_set
 
 
     def diffuse(self, active_set, killed_set, t):
@@ -126,7 +126,7 @@ class BIC(object):
         assert self.prepared, 'Need to run Model.prepare() before diffusing.'
 
         newly_killed   = set()
-        newly_activted = set()
+        newly_activated = set()
         not_activated  = set()
         for active_node in active_set:
             self.attempts[active_node] += 1
@@ -134,7 +134,7 @@ class BIC(object):
             neighbors = set(self.graph.neighbors(active_node)) - active_set
             for neighbor in neighbors:
                 if rd.random() <= self.prop_prob(active_node, neighbor):
-                    newly_activted.add(neighbor)
+                    newly_activated.add(neighbor)
                 else:
                     not_activated.add(neighbor)
 
@@ -145,7 +145,7 @@ class BIC(object):
         for killed_node in newly_killed:
             active_set.remove(killed_node)
             self.opinion[killed_node] = 1.0
-        for activated_node in newly_activted:
+        for activated_node in newly_activated:
             active_set.add(activated_node)
             self.opinion[activated_node] = 1.0
 

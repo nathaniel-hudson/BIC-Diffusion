@@ -1,7 +1,0 @@
-,trial,opinion,activated,algorithm,seed_size,algorithm_time,opinion_distr_func,ffm_distr_func,use_communities
-0,0,510.95326342899443,6,TIM_solution,1,691.2579889297485,uniform,random,False
-1,1,503.4791116729354,3,TIM_solution,1,761.4126200675964,uniform,random,False
-2,0,508.7072419861741,3,TIM_solution,2,612.5791318416595,uniform,random,False
-3,1,510.54967301546156,12,TIM_solution,2,601.7365713119507,uniform,random,False
-4,0,514.8006605190491,15,TIM_solution,3,688.3394749164581,uniform,random,False
-5,1,497.116301444054,4,TIM_solution,3,599.5736019611359,uniform,random,False

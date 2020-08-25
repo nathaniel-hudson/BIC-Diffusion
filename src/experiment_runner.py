@@ -55,7 +55,7 @@ alg_codes = {
 }
 
 # Constant parameters.
-n_trials = 10000
+n_trials = 10#100#0
 t_horizon = 100
 random_seed = 16785407 # a large *prime* number
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     if args.topo is None:
         topologies = default_topologies
     else:
-        if args.topo not in default_topologies:
+        if args.topo not in Simulation.TOPO_CODES:
             raise ValueError("Invalid value for arg `topo`.")
         topologies = [args.topo]
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     param_combinations = itertools.product(topologies, algorithms, opinion_distrs, use_communities)
     for (topo_code, alg, opinion_distr, use_comm) in param_combinations:
         filename = "topo={}_alg={}_comm={}_{}".format(
-            topo_code, alg.__name__, use_comm, opinion_distr.__name__
+            topo_code, alg.__name__.replace("_solution", ""), use_comm, opinion_distr.__name__
         )
         results = Simulation.run(
             topo_code          = topo_code, 
