@@ -57,11 +57,29 @@ def generate_random_RR_sets(args, num):
         args.RR_set[idx] = generate_random_RR(args, idx)
 
 
-def identify_node_that_covers_most_RR_sets(args):
-    # TODO: We need to investigate the implementation of the standard greedy approach for
-    #       the maximum coverage problem (ref [3] in the paper).
-    #  return max(args.RR_set, key=args.RR_set.get)
-    return max(args.RR_deg, key=args.RR_deg.get)
+def identify_node_that_covers_most_RR_sets(args, covered_set):
+    """Greedy solution to the maximum coverage problem.
+
+    Parameters
+    ----------
+    args : Args
+        Wrapper for the arguments used across the sub-procedures.
+    covered_set : set
+        Set of RR sets that have already been covered by previously seeded nodes.
+
+    Returns
+    -------
+    int
+        Greedily picked key for maximum coverage.
+    """
+    max_key = 0
+    max_val = 0
+    for key in args.RR_deg:
+        val = len(args.RR_deg[key] - covered_set)
+        if val > max_val:
+            max_key = key
+            max_val = val
+    return max_key
 
 
 def node_selection(args, n_seeds, theta):
@@ -83,12 +101,15 @@ def node_selection(args, n_seeds, theta):
     """
     generate_random_RR_sets(args, num=theta)
     seed_set = set()
-    for j in range(n_seeds):
-        node_v = identify_node_that_covers_most_RR_sets(args)
+    covered_set = set()
+    for k in range(n_seeds):
+        node_v = identify_node_that_covers_most_RR_sets(args, covered_set)
         seed_set.add(node_v)
         for RR in args.RR_deg[node_v]:
+            covered_set.add(RR)
             if RR in args.RR_set:
                 del args.RR_set[RR]
+                ## TODO: We need to remove the RR values from each node's RR_deg set.
             
         # Avoid redundant/duplicate seed choices.
         args.RR_deg[node_v].clear()
@@ -111,6 +132,10 @@ def KPT_estimation(args, n_seeds):
     float
         KPT* value which is the later to calculate number of needed RR sets.
     """
+    directed = nx.is_directed(args.model.graph)
+    degr_func = args.model.graph.in_degree \
+                if nx.is_directed(args.model.graph) \
+                else args.model.graph.degree
     kpt_star = 1
     for i in range(int(log(args.n_nodes - 1, 2))):
         c_i = (6 * args.ell * log(args.n_nodes) + 6 * log(log(args.n_nodes, 2))) * 2 ** i
@@ -118,18 +143,14 @@ def KPT_estimation(args, n_seeds):
         total_sum = 0
 
         generate_random_RR_sets(args, num=c_i)
-        directed = nx.is_directed(args.model.graph)
-        degr_func = args.model.graph.in_degree \
-                    if nx.is_directed(args.model.graph) \
-                    else args.model.graph.degree
-                  
-        for RR in args.RR_set.values():
-            weight = sum(degr_func(node) for node in RR)
+        for R in args.RR_set.values():
+            weight = sum(degr_func(node) for node in R)
             total_sum += 1 - (1 - weight / args.n_edges) ** n_seeds
 
         if total_sum / c_i > (0.5) ** i:
             kpt_star = args.n_nodes * total_sum / (2 * c_i)
             return kpt_star
+
     return kpt_star
 
 
@@ -154,11 +175,13 @@ def refine_KPT(args, n_seeds, kpt_star, epsilon_prime):
         KPT+ value which is the maximized KPT value upon this refinement sub-procedure.
     """
     seed_set = set()
+    covered_set = set()
     for j in range(n_seeds):
-        node_v = identify_node_that_covers_most_RR_sets(args)
+        node_v = identify_node_that_covers_most_RR_sets(args, covered_set)
         seed_set.add(node_v)
         # Remove RR sets covered by node_v.
         for RR in args.RR_deg[node_v]:
+            covered_set.add(RR)
             if RR in args.RR_set:
                 del args.RR_set[RR]
         # Avoid redundant/duplicate seed choices.
