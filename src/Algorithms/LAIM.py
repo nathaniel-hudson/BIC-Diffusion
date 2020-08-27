@@ -29,8 +29,7 @@ def find_next_pair(model, seed_set, max_iter, theta):
                 potential1 = p_arr[v][iteration - 1]
                 potential2 = p[iteration - 2]
                 if (potential1 > theta) and (potential1 - w1 * potential2 > theta):
-                    p[iteration] = p[iteration] + w2 * \
-                        (potential1 - w1 * potential2)
+                    p[iteration] = p[iteration] + w2 * (potential1 - w1 * potential2)
 
             p[max_iter] = p[max_iter] + p[iteration]
             if p[iteration] <= theta:
@@ -49,7 +48,6 @@ def find_next_pair(model, seed_set, max_iter, theta):
 
 
 def LAIM_solution(model, n_seeds, max_iter=5, theta=0.0001):
-    model.prepare()
     seed_arr = [0 for i in range(n_seeds)]
     seed_set = set()
     total_score = 0
@@ -59,7 +57,6 @@ def LAIM_solution(model, n_seeds, max_iter=5, theta=0.0001):
         seed_set.add(best_pair["key"])
         total_score += best_pair["value"]
 
-    model.prepared = False
     return seed_set
 
 

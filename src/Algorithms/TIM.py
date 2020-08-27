@@ -14,7 +14,6 @@ class ArgWrapper:
         self.hypergraph = [[] for node in model.graph.nodes()]
         self.hypergraph_t = []
         self.hyperID = 0
-        self.queue = []
         self.rand_seed = None
         self.visit_mark = [0 for node in model.graph.nodes()]
         self.visit = [False for node in model.graph.nodes()]
@@ -34,6 +33,7 @@ def kpt_estimation(args):
     
     # algorithm2()
     lb, c = 0.5, 0
+    x = 0 ## NOTE: Delete later
     while True:
         loop = int((6 * math.log(args.n_nodes) + 6 * math.log(math.log(args.n_nodes) / math.log(2))) * 1 / lb)
         c = 0
@@ -45,6 +45,7 @@ def kpt_estimation(args):
             sum_mg_tu += mg_tu
             c += 1 - (1 - pu) ** args.n_seeds
         c /= loop
+        print(f"TIM.kpt_estimation(): {c} > {lb} -> {c > lb} {x}"); x += 1
         if c > lb:
             break
         lb /= 2
@@ -81,13 +82,13 @@ def build_hypergraph_node(args, u_start, hyperiiid, add_hyper_edge):
         args.hypergraph_t[hyperiiid].append(u_start)
 
     n_visit_mark = 0
-    args.queue = [u_start]
+    queue = [u_start]
     args.visit_mark[n_visit_mark] = u_start
     n_visit_mark += 1
     args.visit[u_start] = True
 
-    while len(args.queue) > 0:
-        u = args.queue.pop(0)
+    while len(queue) > 0:
+        u = queue.pop(0)
         for v in nx.neighbors(args.graph_t, u):
             n_visit_edge += 1
             if random.random() > args.model.prop_prob(u, v, use_attempts=False):
@@ -98,7 +99,7 @@ def build_hypergraph_node(args, u_start, hyperiiid, add_hyper_edge):
                 args.visit_mark[n_visit_mark] = v; n_visit_mark += 1
                 args.visit[v] = True
 
-            args.queue.append(v)
+            queue.append(v)
             if add_hyper_edge:
                 args.hypergraph_t[hyperiiid].append(v)
 
@@ -112,13 +113,12 @@ def build_hypergraph(args, R): ## NOTE: EXTREMELY slow...
     args.hypergraph   = [[] for _ in args.model.graph.nodes()]
     args.hypergraph_t = [[] for _ in range(R)]
 
-    # for idx in tqdm(range(R), desc="build_hypergraph() |-> build_hypergraph_node()"):
-    for idx in range(R):
+    # for idx in range(R):
+    for idx in tqdm(range(R)):
         node_u = random.choice(list(args.model.graph))
         build_hypergraph_node(args, node_u, idx, True)
 
     total_added_element = 0
-    # for i in tqdm(range(R), desc="build_hypergraph() |-> append hypergraph elts"):
     for i in range(R):
         for t in args.hypergraph_t[i]:
             args.hypergraph[t].append(i)

@@ -18,7 +18,10 @@ COLUMNS = [
     "algorithm_time", "opinion_distr_func", "ffm_distr_func", "use_communities"
 ]
 
-TOPO_CODES = ["amazon", "dblp", "eu-core", "lj", "orkut", "youtube", "wiki"]
+TOPO_CODES = [
+    "amazon", "dblp", "eu-core", "facebook", "gplus", "lj", "orkut", "twitter", "youtube", 
+    "wiki"
+]
 
 
 def get_network_loading_params(topo_code):
@@ -67,6 +70,22 @@ def get_network_loading_params(topo_code):
         comm_func  = lambda comm_path, mapping: \
             load_community_by_pairs(comm_path, mapping)
 
+    elif topo_code == "facebook":
+        graph_type = nx.Graph
+        graph_path = os.path.join(base_path, "facebook_combined.txt.gz")
+        comm_path  = os.path.join(base_path, "com-facebook.all.cmty.txt.gz")
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
+
+
+    elif topo_code == "gplus":
+        graph_type = nx.DiGraph
+        graph_path = os.path.join(base_path, "gplus_combined.txt.gz")
+        comm_path  = os.path.join(base_path, "com-gplus.all.cmty.txt.gz")
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
+
+
     elif topo_code == "lj":
         graph_type = nx.Graph
         graph_path = os.path.join(base_path, "com-lj.ungraph.txt.gz")
@@ -80,6 +99,14 @@ def get_network_loading_params(topo_code):
         comm_path  = os.path.join(base_path, "com-orkut.top5000.cmty.txt.gz")
         comm_func  = lambda comm_path, mapping: \
             load_community_by_line(comm_path, mapping, n_line_prefix=0)
+
+    elif topo_code == "twitter":
+        graph_type = nx.DiGraph
+        graph_path = os.path.join(base_path, "twitter_combined.txt.gz")
+        comm_path  = os.path.join(base_path, "com-twitter.all.cmty.txt.gz")
+        comm_func  = lambda comm_path, mapping: \
+            load_community_by_line(comm_path, mapping, n_line_prefix=0)
+
 
     elif topo_code == "youtube":
         graph_type = nx.Graph
