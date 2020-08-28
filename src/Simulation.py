@@ -260,7 +260,7 @@ def run(topo_code, algorithm, seed_sizes, time_horizon, n_trials, opinion_distr_
     for n_seeds in seed_sizes:
         # Initialize the FFM factors and the opinion vector.
         if random_seed is not None: 
-            random.seed(random_seed * n_seeds)
+            random.seed(random_seed)
         ffm = initialize_ffm_factors(graph, distr_func=ffm_distr_func)
         opinion = initialize_opinion(graph, communities, distr_func=opinion_distr_func)
         

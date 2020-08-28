@@ -20,7 +20,6 @@ import time
 import networkx as nx
 
 from Algorithms.LAIM       import *
-from Algorithms.TIM        import TIM_solution
 from Algorithms.TIM_Plus   import TIM_plus_solution
 from Algorithms.Proposed   import *
 from Algorithms.Heuristics import *
@@ -38,15 +37,14 @@ polarized = lambda: arcsine.rvs();   polarized.__name__ = "polarized"
 # Dependent variables.
 default_topologies = ["amazon", "dblp", "eu-core", "facebook", "twitter"]
 default_algorithms = [
-    TIM_solution, LAIM_solution, fast_LAIM_solution,     # Baselines
-    opinion_degree_solution,                             # Proposed
-    degree_solution, IRIE_solution, min_opinion_solution # Heuristics
+    TIM_plus_solution, LAIM_solution, fast_LAIM_solution, # Baselines
+    opinion_degree_solution,                              # Proposed
+    degree_solution, IRIE_solution, min_opinion_solution  # Heuristics
 ]
 seed_sizes = list(range(0, 50+1, 10)); seed_sizes[0] = 1
 opinion_distrs = [uniform, polarized]
 use_communities = [False, True]
 alg_codes = {
-    "TIM": TIM_solution,
     "TIM+": TIM_plus_solution,
     "LAIM": LAIM_solution,
     "fast_LAIM": fast_LAIM_solution,
@@ -57,7 +55,7 @@ alg_codes = {
 }
 
 # Constant parameters.
-n_trials = 10#100#0
+n_trials = 100#0
 t_horizon = 100
 random_seed = 16785407 # a large *prime* number
 
