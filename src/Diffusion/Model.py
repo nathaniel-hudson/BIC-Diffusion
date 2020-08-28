@@ -5,7 +5,11 @@ import random   as rd
 import networkx as nx
 
 from scipy.stats import arcsine, uniform
-from .Constants import *
+
+# BIC-related constants. The Lambda constants for the FFM factors are based on a paper
+# related to how they factor into information spreading.
+LAMBDA_DEFAULT = {'O': -0.017, 'C': 0.062, 'E': 0.142, 'A': 0.073, 'N': 0.066}
+GAMMA_DEFAULT = 1.0
 
 class BIC(object):
 
@@ -344,48 +348,13 @@ This will also analyze the runtime/load time of the networks.
 """
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    import seaborn as sns
-    import time
 
-    from Algorithms.Heuristics import random_solution, degree_solution
-    from tqdm                  import tqdm
-
-    data = {'k': [], 'opinion': [], '|A|': [], 'total-time': []}
+    graph = nx.Graph()
+    graph.add_nodes_from([1, 2, 3, 4, 5, 6, 7])
+    graph.add_edges_from([
+        (2, 1), (2, 3), (2, 4),
+        (3, 5),
+        (4, 5), (4, 6), (4, 7),
+        (6, 7)
+    ])
     
-    rd.seed(17)
-    graph = nx.read_edgelist('topos/amazon-graph.txt', nodetype=int)
-    ffm = {user: {factor: rd.random() for factor in 'OCEAN'} for user in graph.nodes}
-    opinion = np.array([rd.random() for user in graph.nodes])
-    model = BIC_Model_nx(graph, ffm, opinion)
-    seed_sizes = list(range(0, 1001, 100)); seed_sizes[0] = 1
-
-    for k in seed_sizes: 
-        model.prepare()
-        print(f'>> Running for seed size (k = {k}).')
-        diff_start = time.time()
-        active_set = set(degree_solution(model, k))
-        killed_set = set()
-        for timestep in tqdm(range(100)):
-            active_set, killed_set = model.diffuse(active_set, killed_set, timestep)
-
-        data['k'].append(k)
-        data['opinion'].append(model.total_opinion())
-        data['|A|'].append(len(active_set.union(killed_set)))
-        data['total-time'].append(time.time() - diff_start)
-
-    df = pd.DataFrame.from_dict(data)
-    
-    sns.barplot(x='k', y='|A|', data=df)
-    plt.title('Activation Set vs. Seed Set Size')
-    plt.show()
-    plt.clf()
-
-    sns.barplot(x='k', y='opinion', data=df)
-    plt.title('Total Opinion vs. Seed Set Size')
-    plt.show()
-    plt.clf()
-
-    sns.barplot(x='k', y='total-time', data=df)
-    plt.title('Runtime vs. Seed Set Size')
-    plt.show()
-    plt.clf()

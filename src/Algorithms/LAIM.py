@@ -61,7 +61,6 @@ def LAIM_solution(model, n_seeds, max_iter=5, theta=0.0001):
 
 
 def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
-    model.prepare()
     max_iter += 1
     p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
     for i in model.graph.nodes():
@@ -70,17 +69,17 @@ def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
     iteration = 2
     while (iteration < max_iter):
         for u in model.graph.nodes():
-            p = p_arr[u]
+            # p = p_arr[u]
             k_out = nx.degree(model.graph, u)
             for v in model.graph.neighbors(u):
                 w1 = 1.0 / k_out
                 w2 = model.prop_prob(u, v, use_attempts=False)
                 potential1 = p_arr[v][iteration - 1]
-                potential2 = p[iteration - 2]
+                potential2 = p_arr[u][iteration - 2]
                 if (potential1 > theta) and (potential1 - w1 * potential2 > theta):
-                    p[iteration] = p[iteration] + w2 * \
+                    p_arr[u][iteration] = p_arr[u][iteration] + w2 * \
                         (potential1 - w1 * potential2)
-            p[max_iter] = p[max_iter] + p[iteration]
+            p_arr[u][max_iter] = p_arr[u][max_iter] + p_arr[u][iteration]
         iteration += 1
 
     seeds = set()
@@ -96,5 +95,4 @@ def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
         total_score += max_val
         p_arr[new_seed][max_iter] = 0
 
-    model.prepared = False
     return seeds

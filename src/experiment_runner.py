@@ -48,6 +48,7 @@ alg_codes = {
     "TIM+": TIM_plus_solution,
     "LAIM": LAIM_solution,
     "fast_LAIM": fast_LAIM_solution,
+    "new": new_solution,
     "opinion_degree": opinion_degree_solution,
     "degree": degree_solution,
     "IRIE": IRIE_solution,

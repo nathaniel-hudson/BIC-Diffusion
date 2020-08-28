@@ -157,3 +157,46 @@ def opinion_path_solution(model, n_seeds):
         '''
 
     return list(S)
+
+
+def new_solution(model, n_seeds, theta=0.2):
+
+    model.prepare()
+    exp_op = [
+        [0 for v in model.graph.nodes()]
+        for u in model.graph.nodes()
+    ]
+
+    ## NOTE: This part makes sense to me... Maybe a matrix structure instead?
+    def gamma(u, ap=1.0):
+        if ap <= theta:
+            return 0
+
+        value = 1.0 - model.init_opinion[u]
+        for v in model.graph.neighbors(u):
+            pp = model.prop_prob(u, v, use_attempts=False)
+            temp = pp * gamma(v, ap * pp) + (1 - pp) * model.penalized_update(v, 0)
+            # temp = pp * gamma(v, ap - 1) ## NOTE: Hop-based approach.
+            exp_op[v] = temp
+            value += temp
+
+        return value
+
+    # for node 
+    for u in model.graph.nodes():
+        exp_op[u][u] = gamma(u)
+
+    seed_set = set()
+    for seed in range(n_seeds):
+        u = np.argmax([exp_op[i][i] for i in model.graph.nodes()])
+        seed_set.add(u)
+        ## TODO: Now we need to come up with a way to simply anneal the values
+        ##       in `exp_op` based on the newly seeded node to avoid redundant
+        ##       choices.
+        for v in model.graph.neighbors(u):
+            exp_op[v][v] -= exp_op[u][v]
+        # del exp_op[u]
+
+    model.prepared = False
+    return seed_set
+
