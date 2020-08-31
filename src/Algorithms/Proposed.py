@@ -348,20 +348,60 @@ def new_solution(model, n_seeds, max_iter=2, theta=0.0001):
     return seeds
 
 
-def nom_solution(model, n_seeds, theta=0.4):
-    pruned_nodes = [u for u in model.graph.nodes() if model.init_opinion[u] <= theta]
-    pn_set = set(pruned_nodes) ## We do this to simplify lookup for below.
-    pruned_edges = [(u,v) for (u,v) in model.graph.edges() if (u in pn_set) and (v in pn_set)]
-    mapping_from = {idx: pruned_nodes[idx] for idx in range(len(pruned_nodes))}
-    mapping_to   = {pruned_nodes[idx]: idx for idx in range(len(pruned_nodes))}
+def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001):
+    if n_seeds < 1:
+        return set()
 
-    graph_psi = nx.DiGraph() if model.graph.is_directed() else nx.Graph()
-    graph_psi.add_nodes_from(pruned_nodes)
-    graph_psi.add_edges_from(pruned_edges)
+    max_iter += 1
+    p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
+    for i in model.graph.nodes():
+        p_arr[i][1] = 1
 
-    graph_psi = nx.relabel_nodes(graph_psi, mapping_to)
-    opinion = [model.init_opinion[node] for node in pruned_nodes]
-    ffm = {node: model.ffm[node] for node in pruned_nodes}
-    model_psi = BIC(graph_psi, ffm, opinion)
+    iteration = 2
+    while (iteration < max_iter):
+        for u in model.graph.nodes():
+            k_out = nx.degree(model.graph, u)
+            for v in model.graph.neighbors(u):
+                w1 = 1.0 / k_out
+                w2 = model.prop_prob(u, v, use_attempts=False)
+                potential1 = p_arr[v][iteration - 1]
+                potential2 = p_arr[u][iteration - 2]
+                if (potential1 > theta) and (potential1 - w1 * potential2 > theta):
+                    p_arr[u][iteration] = p_arr[u][iteration] + w2 * \
+                        (potential1 - w1 * potential2)
+            p_arr[u][max_iter] = p_arr[u][max_iter] + p_arr[u][iteration]
+        iteration += 1
 
-    return fast_LAIM_solution(model_psi, n_seeds)
+    seeds = set()
+    total_score = 0
+    for i in range(n_seeds):
+        max_val = 0
+        new_seed = -1
+        for j in model.graph.nodes():
+            if (p_arr[j][max_iter] > max_val):
+                max_val = p_arr[j][max_iter]
+                new_seed = j
+        seeds.add(new_seed)
+        total_score += max_val
+        p_arr[new_seed][max_iter] = 0
+        
+    return seeds
+
+
+def nom_solution(model, n_seeds, psi=0.4):
+    pruned_nodes = [u for u in model.graph.nodes() if model.init_opinion[u] <= psi]
+    # pn_set = set(pruned_nodes) ## We do this to simplify lookup for below.
+    # pruned_edges = [(u,v) for (u,v) in model.graph.edges() if (u in pn_set) and (v in pn_set)]
+    # mapping_from = {idx: pruned_nodes[idx] for idx in range(len(pruned_nodes))}
+    # mapping_to   = {pruned_nodes[idx]: idx for idx in range(len(pruned_nodes))}
+
+    # graph_psi = nx.DiGraph() if model.graph.is_directed() else nx.Graph()
+    # graph_psi.add_nodes_from(pruned_nodes)
+    # graph_psi.add_edges_from(pruned_edges)
+
+    # graph_psi = nx.relabel_nodes(graph_psi, mapping_to)
+    # opinion = [model.init_opinion[node] for node in pruned_nodes]
+    # ffm = {node: model.ffm[node] for node in pruned_nodes}
+    # model_psi = BIC(graph_psi, ffm, opinion)
+
+    return __fast_LAIM(model, n_seeds, pruned_nodes)
