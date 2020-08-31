@@ -259,6 +259,9 @@ class BIC(object):
         float
             Propagation probability for `source` to activate `target`.
         """
+        if not self.graph.has_edge(source, target):
+            return 0
+
         in_neighbors = self.graph.neighbors(target) \
                        if not nx.is_directed(self.graph) \
                        else self.graph.predecessors(target)

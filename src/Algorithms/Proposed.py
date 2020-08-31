@@ -159,7 +159,24 @@ def opinion_path_solution(model, n_seeds):
     return list(S)
 
 
-def new_solution(model, n_seeds, theta=0.2):
+def proto1_solution(model, n_seeds, theta=0.2):
+    """First prototype... Completely failed. It was both terribly slow (slower than TIM+)
+       and completely lacking in terms of providing good results. 
+
+    Parameters
+    ----------
+    model : BIC
+        [description]
+    n_seeds : int
+        Number of seeds
+    theta : float, optional
+        Activation path saturation point, by default 0.2
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
 
     model.prepare()
     exp_op = [
@@ -177,7 +194,7 @@ def new_solution(model, n_seeds, theta=0.2):
             pp = model.prop_prob(u, v, use_attempts=False)
             temp = pp * gamma(v, ap * pp) + (1 - pp) * model.penalized_update(v, 0)
             # temp = pp * gamma(v, ap - 1) ## NOTE: Hop-based approach.
-            exp_op[v] = temp
+            exp_op[u][v] = temp
             value += temp
 
         return value
@@ -200,3 +217,151 @@ def new_solution(model, n_seeds, theta=0.2):
     model.prepared = False
     return seed_set
 
+
+
+def new_solution(model, n_seeds, max_iter=2, theta=0.0001):
+    
+    model.prepare()
+
+    """ VERSION 1. EXTREMELY expensive computationally -- not worth it.
+    def step(u, i):
+        if i < 0:
+            return 0
+        elif i == 0:
+            return 1 - model.init_opinion[u]
+        elif i > 0:
+            sum_total = 0
+            for v in model.graph.neighbors(u):
+                pp_uv = model.prop_prob(u, v, use_attempts=False)
+                pp_vu = model.prop_prob(v, u, use_attempts=False)
+                sum_total += pp_uv * (step(v, i-1) - pp_vu * step(u, i-2)) + \
+                    (1-pp_uv) * ((model.penalized_update(v, 0) - model.init_opinion[v]) - \
+                    (1-pp_vu) *  (model.penalized_update(u, 0) - model.init_opinion[u]))
+            return sum_total
+
+    scores = [step(node, max_depth) for node in model.graph.nodes()]
+    seed_set = set()
+    for _ in range(n_seeds):
+        seed = np.argmax(scores)
+        seed_set.add(seed)
+        scores[seed] = float("-inf")
+    model.prepared = False
+    return seed_set
+    """
+
+    """ VERSION 2. Alright in all but one case: polarized, community-aware.
+    if n_seeds < 1:
+        return set()
+        
+    max_iter += 1
+    p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
+    for node in model.graph.nodes():
+        p_arr[node][1] = 1.0 - model.init_opinion[node]
+
+    i = 2
+    while (i < max_iter):
+        for u in model.graph.nodes():
+            k_out = nx.degree(model.graph, u)
+            for v in model.graph.neighbors(u):
+                w1 = 1.0 / k_out
+                pp_vu = model.prop_prob(v, u, use_attempts=False)
+                pp_uv = model.prop_prob(u, v, use_attempts=False)
+                cand1 = p_arr[v][i - 1]
+                cand2 = p_arr[u][i - 2]
+                # if (cand1 > theta) and (cand1 - w1 * cand2 > theta):
+                #     p_arr[u][i] = p_arr[u][i] + pp_uv * (cand1 - w1 * cand2) + \
+                if (cand1 > theta) and (cand1 - pp_vu * cand2 > theta):
+                    adv = p_arr[u][i] + pp_uv * (cand1 - pp_vu * cand2)
+                    pen = (1-pp_uv) * (model.penalized_update(v, 0) - model.init_opinion[v])
+                    p_arr[u][i] =  adv + pen
+                         # + \
+                        # (1-pp_vu) * (model.penalized_update(u, 0) - model.init_opinion[u]))
+                    
+            p_arr[u][max_iter] = p_arr[u][max_iter] + p_arr[u][i]
+        i += 1
+
+    seeds = set()
+    for i in range(n_seeds):
+        max_val  = float("-inf")
+        new_seed = None
+        for j in model.graph.nodes():
+            if (p_arr[j][max_iter] > max_val):
+                max_val = p_arr[j][max_iter]
+                new_seed = j
+        seeds.add(new_seed)
+        p_arr[new_seed][max_iter] = 0
+
+    # print(f"seeds -> {seeds}")
+    return seeds
+    """
+
+
+    """
+    ## GREEDY SOLUTION
+    seed_set = set()
+    for k in range(n_seeds):
+        values = {
+            node: model.simulate(seed_set.union({node}), 100)[0] 
+            for node in set(model.graph.nodes()) - seed_set
+        }
+        seed_set.add(max(values, key=values.get))
+    return seed_set
+    """
+
+    if n_seeds < 1:
+        return set()
+        
+    max_iter += 1
+    p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
+    for i in model.graph.nodes():
+        p_arr[i][1] = 1
+
+    iteration = 2
+    while (iteration < max_iter):
+        for u in model.graph.nodes():
+            k_out = nx.degree(model.graph, u)
+            for v in model.graph.neighbors(u):
+                w1 = 1.0 / k_out
+                w2 = model.prop_prob(u, v, use_attempts=False)
+                potential1 = p_arr[v][iteration - 1]
+                potential2 = p_arr[u][iteration - 2]
+                if (potential1 > theta) and (potential1 - w1 * potential2 > theta):
+                    p_arr[u][iteration] = p_arr[u][iteration] + w2 * \
+                        (potential1 - w1 * potential2)
+            p_arr[u][max_iter] = p_arr[u][max_iter] + p_arr[u][iteration]
+        iteration += 1
+
+    for i in model.graph.nodes():
+        p_arr[i][1] *= (1 - model.init_opinion[i])
+
+    seeds = set()
+    for i in range(n_seeds):
+        max_val = 0
+        new_seed = -1
+        for j in model.graph.nodes():
+            if (p_arr[j][max_iter] > max_val):
+                max_val = p_arr[j][max_iter]
+                new_seed = j
+        seeds.add(new_seed)
+        p_arr[new_seed][max_iter] = 0
+
+    return seeds
+
+
+def nom_solution(model, n_seeds, theta=0.4):
+    pruned_nodes = [u for u in model.graph.nodes() if model.init_opinion[u] <= theta]
+    pn_set = set(pruned_nodes) ## We do this to simplify lookup for below.
+    pruned_edges = [(u,v) for (u,v) in model.graph.edges() if (u in pn_set) and (v in pn_set)]
+    mapping_from = {idx: pruned_nodes[idx] for idx in range(len(pruned_nodes))}
+    mapping_to   = {pruned_nodes[idx]: idx for idx in range(len(pruned_nodes))}
+
+    graph_psi = nx.DiGraph() if model.graph.is_directed() else nx.Graph()
+    graph_psi.add_nodes_from(pruned_nodes)
+    graph_psi.add_edges_from(pruned_edges)
+
+    graph_psi = nx.relabel_nodes(graph_psi, mapping_to)
+    opinion = [model.init_opinion[node] for node in pruned_nodes]
+    ffm = {node: model.ffm[node] for node in pruned_nodes}
+    model_psi = BIC(graph_psi, ffm, opinion)
+
+    return fast_LAIM_solution(model_psi, n_seeds)

@@ -201,6 +201,9 @@ def refine_KPT(args, n_seeds, kpt_star, epsilon_prime):
 
 
 def TIM_plus_solution(model, n_seeds, epsilon=0.2, ell=1):
+    if n_seeds < 1:
+        return set()
+        
     # This wrapper is used to simplify the exchange of shared data-structures across the 
     # sub-procedures (largely the `model` and the RR sets).
     args = Args(model, ell)

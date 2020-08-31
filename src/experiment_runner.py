@@ -19,10 +19,10 @@ import Simulation
 import time
 import networkx as nx
 
-from Algorithms.LAIM       import *
-from Algorithms.TIM_Plus   import TIM_plus_solution
-from Algorithms.Proposed   import *
 from Algorithms.Heuristics import *
+from Algorithms.LAIM       import *
+from Algorithms.Proposed   import *
+from Algorithms.TIM_Plus   import TIM_plus_solution
 from Diffusion.Model       import *
 from scipy.stats           import arcsine
 from tqdm                  import tqdm
@@ -42,8 +42,10 @@ default_algorithms = [
     degree_solution, IRIE_solution, min_opinion_solution  # Heuristics
 ]
 seed_sizes = list(range(0, 50+1, 10)); seed_sizes[0] = 1
-opinion_distrs = [uniform, polarized]
-use_communities = [False, True]
+# opinion_distrs = [uniform, polarized]
+# use_communities = [False, True]
+opinion_distrs = [polarized, uniform]
+use_communities = [True, False]
 alg_codes = {
     "TIM+": TIM_plus_solution,
     "LAIM": LAIM_solution,

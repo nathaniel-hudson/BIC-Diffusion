@@ -61,6 +61,9 @@ def LAIM_solution(model, n_seeds, max_iter=5, theta=0.0001):
 
 
 def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
+    if n_seeds < 1:
+        return set()
+        
     max_iter += 1
     p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
     for i in model.graph.nodes():
@@ -69,7 +72,6 @@ def fast_LAIM_solution(model, n_seeds, max_iter=2, theta=0.0001):
     iteration = 2
     while (iteration < max_iter):
         for u in model.graph.nodes():
-            # p = p_arr[u]
             k_out = nx.degree(model.graph, u)
             for v in model.graph.neighbors(u):
                 w1 = 1.0 / k_out

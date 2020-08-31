@@ -1,15 +1,15 @@
 import matplotlib.pyplot as plt
 import networkx as nx
+import pandas as pd
 import random
 import seaborn as sns
 import time
-
 import Simulation
 
-from Algorithms.Heuristics import *
 from Algorithms.LAIM       import *
-from Algorithms.TIM        import TIM_solution
 from Algorithms.TIM_Plus   import TIM_plus_solution
+from Algorithms.Proposed   import *
+from Algorithms.Heuristics import *
 
 from Diffusion.Model import BIC
 
@@ -21,44 +21,41 @@ consider n_seeds=5:
     FastLAIM runtime  2.84473
 """
 
-sns.set_style("darkgrid")
+sns.set_style("ticks")
 
-n_trials = 5#50
-n_seeds = 50
-# seed_sizes = list(range(0, 100+1, 10))
-# seed_sizes[0] = 1
+results = pd.read_csv("fb-playground-data.csv")
+sns.lineplot(x="seed_size", y="activated", hue="algorithm", markers=True, data=results)
+plt.show()
+exit(0)
+
+n_trials = 10
 time_horizon = 100
-uniform = random.random
+default_algorithms = [
+    TIM_plus_solution, LAIM_solution, fast_LAIM_solution,  # Baselines
+    opinion_degree_solution, proto1_solution,              # Proposed
+    degree_solution, min_opinion_solution, random_solution # Heuristics
+]
 
-n = 15000
-m = 31000
+seed_sizes = list(range(0, 50+1, 10))
+seed_sizes[0] = 1
+seed_sizes = [0] + seed_sizes
 
-graph = nx.gnm_random_graph(1500000, 31000000, directed=False) ## NOTE: This emulates the NETHEPT topology's density.
-ffm = {node: {factor: random.random() for factor in "OCEAN"} for node in graph.nodes()}
-opinion = [random.random() for node in graph.nodes()]
+results = pd.DataFrame()
+for alg in default_algorithms:
+    filename = "alg={}".format(alg.__name__.replace("_solution", ""))
+    results = results.append(Simulation.run(
+        topo_code          = "facebook", 
+        algorithm          = alg, 
+        seed_sizes         = seed_sizes, 
+        time_horizon       = time_horizon, 
+        n_trials           = n_trials, 
+        opinion_distr_func = lambda: 1.0,
+        ffm_distr_func     = lambda: 1.0,
+        random_seed        = 46578641,
+        use_communities    = False,
+        pbar_desc          = filename
+    ))
 
-model = BIC(graph, ffm, opinion)
-model.prepare()
-
-start = time.time()
-seed_set = TIM_plus_solution(model, n_seeds)
-TIM_time = time.time() - start
-
-# start = time.time()
-# seed_set = LAIM_solution(model, n_seeds)
-# LAIM_time = time.time() - start
-
-start = time.time()
-seed_set = fast_LAIM_solution(model, n_seeds)
-fast_LAIM_time = time.time() - start
-
-print(f"\n\nTIM+ runtime:     {TIM_time:0.5f}")
-# print(f"LAIM runtime:     {LAIM_time:0.5f}")
-print(f"FastLAIM runtime: {fast_LAIM_time:0.5f}")
-
-# model.prepare()
-# opinion, activated, visited = model.simulate(seed_set, 100)
-
-# print("Total Opinion: {}\nActivated nodes: {}\nVisited nodes: {}\nLAIM runtime: {:0.5f}".format(
-#     opinion, len(activated), len(visited), end - start
-# ))
+results.to_csv("fb-playground-data.csv")
+sns.barplot(x="seed_size", y="activated", hue="algorithm", data=results)
+plt.show()
