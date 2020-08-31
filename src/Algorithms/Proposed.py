@@ -354,8 +354,11 @@ def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001):
 
     max_iter += 1
     p_arr = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
-    for i in model.graph.nodes():
-        p_arr[i][1] = 1
+    for node in model.graph.nodes():
+        if node in pruned_nodes:
+            p_arr[node][1] = 1
+        else:
+            p_arr[node][1] = 0 # NOTE: We may want to make this negative? Just an idea.
 
     iteration = 2
     while (iteration < max_iter):
@@ -389,7 +392,7 @@ def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001):
 
 
 def nom_solution(model, n_seeds, psi=0.4):
-    pruned_nodes = [u for u in model.graph.nodes() if model.init_opinion[u] <= psi]
+    pruned_nodes = set([u for u in model.graph.nodes() if model.init_opinion[u] <= psi])
     # pn_set = set(pruned_nodes) ## We do this to simplify lookup for below.
     # pruned_edges = [(u,v) for (u,v) in model.graph.edges() if (u in pn_set) and (v in pn_set)]
     # mapping_from = {idx: pruned_nodes[idx] for idx in range(len(pruned_nodes))}
