@@ -193,7 +193,7 @@ def initialize_opinion(graph, communities=None, distr_func=random.random):
     return opinion
 
 
-def load_graph(topo_code, get_communities=True):
+def load_graph(topo_code):
     graph_type, graph_path, comm_path, comm_func = get_network_loading_params(topo_code)
     graph = nx.read_edgelist(graph_path, create_using=graph_type, nodetype=int)
     mapping = get_relabel_mapping(graph)

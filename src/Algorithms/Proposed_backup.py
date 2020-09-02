@@ -247,9 +247,7 @@ def new_solution_bad(model, n_seeds, max_iter=2, theta=0.0001):
     return seeds
 
 
-def similarity_ratio(node):
-    opinions = [model.init_opinion[u] for u in [node] + list(model.graph.neighbors(node))]
-    return 1 - np.std(opinions)
+
 
 
 
@@ -259,14 +257,26 @@ def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001, psi=0):
     if n_seeds < 1:
         return set()
 
+    def similarity_ratio(node):
+        opinions = [model.init_opinion[u] for u in [node] + list(model.graph.neighbors(node))]
+        return 1 - np.std(opinions)
+        # return min(opinions) / max(opinions)
+
     max_iter += 1
     infl = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
+    # cost = [0  for i in model.graph.nodes()]
+    # ratios = {node: similarity_ratio(node) for node in model.graph.nodes()} ## TODO: Weight this by degree.
 
     for node in model.graph.nodes():
         if node in pruned_nodes:
+            # infl[node][1] = 1
+            # infl[node][1] = model.graph.degree(node) * (1 - model.init_opinion[node])
+            # infl[node][1] = model.graph.degree(node) * similarity_ratio(node)
             infl[node][1] = (1 - model.init_opinion[node])
+            # infl[node][1] = 1 - abs(model.init_opinion[node] - psi)
         else:
             infl[node][1] = 0
+        # infl[node][1] = (1 - model.init_opinion[node]) if node in pruned_nodes else 0
 
     for i in range(max_iter):
         for u in model.graph.nodes():
@@ -277,18 +287,26 @@ def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001, psi=0):
                 pp_vu = model.prop_prob(v, u, use_attempts=False) 
                 if (infl[v][i-1] > theta) and (infl[v][i-1] - pp_vu * infl[u][i-2] > theta):
                     infl[u][i] += pp_uv * (infl[v][i-1] - pp_vu * infl[u][i-2])
+                # cost[v] += (1-pp_uv) * (model.penalized_update(v, 0) - model.init_opinion[v])
 
             infl[u][max_iter] += infl[u][i]
 
 
     seeds = set()
     pruned_nodes = set(pruned_nodes)
+    # avg_cost = np.mean(cost)
     for i in range(n_seeds):
         max_val = float("-inf")
         new_seed = None
+        # for j in pruned_nodes:
         for j in model.graph.nodes():
             if j in seeds:
                 continue
+
+            # if infl[j][max_iter] * ratios[j] > max_val:
+            #     max_val = infl[j][max_iter] * ratios[j]
+            #     new_seed = j
+
             if infl[j][max_iter] > max_val:
                 max_val = infl[j][max_iter] 
                 new_seed = j

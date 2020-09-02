@@ -6,6 +6,7 @@ import seaborn as sns
 import time
 import Simulation
 
+from scipy.stats           import arcsine
 from Algorithms.LAIM       import *
 from Algorithms.TIM_Plus   import TIM_plus_solution
 from Algorithms.Proposed   import *
@@ -21,13 +22,53 @@ consider n_seeds=5:
     FastLAIM runtime  2.84473
 """
 
-sns.set_style("ticks")
+def similarity(graph, opinion, f):
+    ratios = []
+    start = time.time()
+    for node in graph.nodes():
+        neighbors = graph.neighbors(node)
+        opinions = [opinion[neighbor] for neighbor in neighbors]
+        if len(opinions) > 0:
+            ratio = min(opinions)/max(opinions)
+            ratios.append(ratio)
+    end = time.time()
+    
+    print("{}:\tAvg. -> {:0.6f}, Min. -> {:0.6f}, Max -> {:0.6f}, Std. -> {:0.6f}, Comp. time -> {:0.6f}".format(
+        f.__name__, np.mean(ratios), min(ratios), max(ratios), np.std(ratios), end - start
+    ))
 
-results = pd.read_csv("fb-playground-data.csv")
-sns.lineplot(x="seed_size", y="activated", hue="algorithm", markers=True, data=results)
-plt.show()
-exit(0)
+uniform   = lambda: random.random(); uniform.__name__ = "uniform"
+polarized = lambda: arcsine.rvs();   polarized.__name__ = "polarized"
 
+for topo_code in ["eu-core"]: #["amazon", "dblp", "eu-core", "facebook", "twitter"]:
+    print(f"Topology -> {topo_code}")
+    print("\tCommunity-Agnostic:")
+    for opinion_func in [uniform, polarized]:
+        graph, comm = Simulation.load_graph_and_communities(topo_code)
+        opinion = Simulation.initialize_opinion(graph, distr_func=opinion_func)
+        lo = [x for x in opinion if x <  0.5]
+        up = [x for x in opinion if x >= 0.5]
+        print("\t * {}.lower:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
+            opinion_func.__name__, np.mean(lo), min(lo), max(lo), np.std(lo)
+        ))
+        print("\t * {}.upper:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
+            opinion_func.__name__, np.mean(up), min(up), max(up), np.std(up)
+        ))
+
+    print("\tCommunity-Aware:")
+    for opinion_func in [uniform, polarized]:
+        graph, comm = Simulation.load_graph_and_communities(topo_code)
+        opinion = Simulation.initialize_opinion(graph, comm, distr_func=opinion_func)
+        lo = [x for x in opinion if x <  0.5]
+        up = [x for x in opinion if x >= 0.5]
+        print("\t * {}.lower:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
+            opinion_func.__name__, np.mean(lo), min(lo), max(lo), np.std(lo)
+        ))
+        print("\t * {}.upper:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
+            opinion_func.__name__, np.mean(up), min(up), max(up), np.std(up)
+        ))
+
+"""
 n_trials = 10
 time_horizon = 100
 default_algorithms = [
@@ -59,3 +100,4 @@ for alg in default_algorithms:
 results.to_csv("fb-playground-data.csv")
 sns.barplot(x="seed_size", y="activated", hue="algorithm", data=results)
 plt.show()
+"""
