@@ -13,60 +13,77 @@ from Algorithms.Proposed   import *
 from Algorithms.Heuristics import *
 
 from Diffusion.Model import BIC
-
-"""
-Using the new implementation of TIM+... On a BA network with 1000 nodes and K=32, we have the following runtimes and we
-consider n_seeds=5:
-    TIM+ runtime      746.75121
-    LAIM runtime      57.85623
-    FastLAIM runtime  2.84473
-"""
-
-def similarity(graph, opinion, f):
-    ratios = []
-    start = time.time()
-    for node in graph.nodes():
-        neighbors = graph.neighbors(node)
-        opinions = [opinion[neighbor] for neighbor in neighbors]
-        if len(opinions) > 0:
-            ratio = min(opinions)/max(opinions)
-            ratios.append(ratio)
-    end = time.time()
-    
-    print("{}:\tAvg. -> {:0.6f}, Min. -> {:0.6f}, Max -> {:0.6f}, Std. -> {:0.6f}, Comp. time -> {:0.6f}".format(
-        f.__name__, np.mean(ratios), min(ratios), max(ratios), np.std(ratios), end - start
-    ))
+from tqdm import tqdm
 
 uniform   = lambda: random.random(); uniform.__name__ = "uniform"
 polarized = lambda: arcsine.rvs();   polarized.__name__ = "polarized"
+data = {
+    "Topology": [],
+    "Opinion-Kind": [],
+    "Community-Kind": [],
+    "Metric": []
+}
 
-for topo_code in ["eu-core"]: #["amazon", "dblp", "eu-core", "facebook", "twitter"]:
-    print(f"Topology -> {topo_code}")
-    print("\tCommunity-Agnostic:")
+def get_metric(graph, opinion):
+    stds = []
+    # neighbor_func = graph.neighbors if not nx.is_directed(graph) else graph.predecessors
+    directed = nx.is_directed(graph)
+    for u in graph.nodes():
+        ## OPTION A.
+        # diffs = []
+        # for v in neighbor_func(u):
+        #     diff = abs(opinion[u] - opinion[v])
+        #     diffs.append(diff)
+        ## OPTION B.
+        diffs = [opinion[u]] + [opinion[v] for v in graph.neighbors(u)]
+        if directed:
+            diffs.extend([opinion[v] for v in graph.predecessors(u)])
+        if len(diffs) > 0:
+            stds.append(np.std(diffs))
+        else:
+            stds.append(0)
+    return stds
+
+pbar = tqdm(total=5*2*2, desc="Progress")
+
+for topo_code in ["amazon", "dblp", "eu-core", "facebook", "twitter"]:
+
     for opinion_func in [uniform, polarized]:
         graph, comm = Simulation.load_graph_and_communities(topo_code)
         opinion = Simulation.initialize_opinion(graph, distr_func=opinion_func)
-        lo = [x for x in opinion if x <  0.5]
-        up = [x for x in opinion if x >= 0.5]
-        print("\t * {}.lower:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
-            opinion_func.__name__, np.mean(lo), min(lo), max(lo), np.std(lo)
-        ))
-        print("\t * {}.upper:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
-            opinion_func.__name__, np.mean(up), min(up), max(up), np.std(up)
-        ))
-
-    print("\tCommunity-Aware:")
+        metrics = get_metric(graph, opinion)
+        for metric in metrics:
+            data["Topology"].append(topo_code)
+            data["Opinion-Kind"].append(opinion_func.__name__)
+            data["Community-Kind"].append("agnostic")
+            data["Metric"].append(metric)
+        pbar.update(1)
+        
     for opinion_func in [uniform, polarized]:
         graph, comm = Simulation.load_graph_and_communities(topo_code)
         opinion = Simulation.initialize_opinion(graph, comm, distr_func=opinion_func)
-        lo = [x for x in opinion if x <  0.5]
-        up = [x for x in opinion if x >= 0.5]
-        print("\t * {}.lower:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
-            opinion_func.__name__, np.mean(lo), min(lo), max(lo), np.std(lo)
-        ))
-        print("\t * {}.upper:\tAvg={:0.6f}, Min={:0.6f}, Max={:0.6f}, Std={:0.6f}".format(
-            opinion_func.__name__, np.mean(up), min(up), max(up), np.std(up)
-        ))
+        metrics = get_metric(graph, opinion)
+        for metric in metrics:
+            data["Topology"].append(topo_code)
+            data["Opinion-Kind"].append(opinion_func.__name__)
+            data["Community-Kind"].append("aware")
+            data["Metric"].append(metric)
+        pbar.update(1)
+        
+
+sns.catplot(
+    x="Topology",
+    y="Metric",
+    hue="Topology",
+    kind="boxen",
+    data=pd.DataFrame.from_dict(data),
+    row="Opinion-Kind",
+    col="Community-Kind",
+    sharex=True,
+    sharey=True,
+)
+plt.show()
+
 
 """
 n_trials = 10

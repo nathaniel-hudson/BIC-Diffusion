@@ -247,7 +247,9 @@ def new_solution_bad(model, n_seeds, max_iter=2, theta=0.0001):
     return seeds
 
 
-
+def similarity_ratio(node):
+    opinions = [model.init_opinion[u] for u in [node] + list(model.graph.neighbors(node))]
+    return 1 - np.std(opinions)
 
 
 
@@ -257,26 +259,14 @@ def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001, psi=0):
     if n_seeds < 1:
         return set()
 
-    def similarity_ratio(node):
-        opinions = [model.init_opinion[u] for u in [node] + list(model.graph.neighbors(node))]
-        return 1 - np.std(opinions)
-        # return min(opinions) / max(opinions)
-
     max_iter += 1
     infl = [[0 for j in range(max_iter + 1)] for i in model.graph.nodes()]
-    # cost = [0  for i in model.graph.nodes()]
-    # ratios = {node: similarity_ratio(node) for node in model.graph.nodes()} ## TODO: Weight this by degree.
 
     for node in model.graph.nodes():
         if node in pruned_nodes:
-            # infl[node][1] = 1
-            # infl[node][1] = model.graph.degree(node) * (1 - model.init_opinion[node])
-            # infl[node][1] = model.graph.degree(node) * similarity_ratio(node)
             infl[node][1] = (1 - model.init_opinion[node])
-            # infl[node][1] = 1 - abs(model.init_opinion[node] - psi)
         else:
             infl[node][1] = 0
-        # infl[node][1] = (1 - model.init_opinion[node]) if node in pruned_nodes else 0
 
     for i in range(max_iter):
         for u in model.graph.nodes():
@@ -287,26 +277,18 @@ def __fast_LAIM(model, n_seeds, pruned_nodes, max_iter=2, theta=0.0001, psi=0):
                 pp_vu = model.prop_prob(v, u, use_attempts=False) 
                 if (infl[v][i-1] > theta) and (infl[v][i-1] - pp_vu * infl[u][i-2] > theta):
                     infl[u][i] += pp_uv * (infl[v][i-1] - pp_vu * infl[u][i-2])
-                # cost[v] += (1-pp_uv) * (model.penalized_update(v, 0) - model.init_opinion[v])
 
             infl[u][max_iter] += infl[u][i]
 
 
     seeds = set()
     pruned_nodes = set(pruned_nodes)
-    # avg_cost = np.mean(cost)
     for i in range(n_seeds):
         max_val = float("-inf")
         new_seed = None
-        # for j in pruned_nodes:
         for j in model.graph.nodes():
             if j in seeds:
                 continue
-
-            # if infl[j][max_iter] * ratios[j] > max_val:
-            #     max_val = infl[j][max_iter] * ratios[j]
-            #     new_seed = j
-
             if infl[j][max_iter] > max_val:
                 max_val = infl[j][max_iter] 
                 new_seed = j
@@ -327,4 +309,63 @@ def new_solution(model, n_seeds, psi=0.375):
     model.prepared = False
 
     # return {1, 2, 3}
+    return seeds
+
+
+
+
+
+
+
+
+
+def new_solution(model, n_seeds, p=0.01, theta=1.0):
+    """Proposed solution based on `Degreediscount`.
+
+    Parameters
+    ----------
+    model : BIC
+        Instance of the BIC model.
+    n_seeds : int
+        Number of seed nodes.
+    p : float, optional
+        Discount tuning parameter, by default 0.01.
+
+    Returns
+    -------
+    set
+        Set of seed nodes.
+    """
+    if n_seeds <= 0:
+        return set()
+
+    graph = model.graph
+    opinion = model.init_opinion
+
+    def op_degree(node):
+        degr = graph.degree(node) 
+        return degr
+        degr *= (1.0 - opinion[node]) if opinion[node] <= theta else 0
+        return degr
+
+    node_set = set(graph.nodes())
+    seeds = set()
+    DD = {node: op_degree(node) for node in node_set}
+    T  = {node: 0 for node in node_set}
+
+    for i in range(n_seeds):
+        u = None
+        val = float('-inf')
+        for node in node_set - seeds:
+            if op_degree(node) > val:
+                u = node
+                val = DD[node]
+
+        seeds.add(u)
+
+        for v in graph.neighbors(u):
+            if v in node_set - seeds:
+                T[v] += 1
+                DD[v] = op_degree(v) - 2*T[v] - (op_degree(v)-T[v]) * T[v] * p
+
     return seeds
