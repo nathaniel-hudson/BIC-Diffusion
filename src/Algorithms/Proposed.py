@@ -223,6 +223,18 @@ def new_solution(model, n_seeds, max_iters=2):
     in_neighbors = graph.neighbors if not nx.is_directed(graph) else graph.predecessors
     out_neighbors = graph.neighbors
 
+    def gen_influencers(node):
+        influencers = set()
+        in_neighbors_opinions = [opinion[x] for x in in_neighbors(node)]
+        in_neighbors_opinions.append(opinion[node])
+        std = np.std(in_neighbors_opinions)
+
+        for in_nbor in in_neighbors(node):
+            if opinion[node]-std <= opinion[in_nbor] and opinion[in_nbor] <= opinion[node] + std:
+                influencers.add(in_nbor)
+        
+        return influencers
+
     def pen_influencers(node):
         influencers = set()
         in_neighbors_opinions = [opinion[x] for x in in_neighbors(node)]
@@ -256,24 +268,13 @@ def new_solution(model, n_seeds, max_iters=2):
                     (impact[itr-1][v][v] - pp_vu * impact[itr-2][u][u])
                 impact[itr][u][u] += impact[itr][u][v]
 
-                ## NOTE: Experimental.
-                # penalty[itr][u][v] += (1-pp_uv) * \
-                #     penalty[itr][v][v]
-                #     # (penalty[itr][v][v] - (1-pp_vu) * penalty[itr-2][u][u])
-                # penalty[itr][u][u] += impact[itr][u][v]
-
             impact[max_iters][u][u] += impact[itr][u][u]
-            # impact[max_iters][u][u] = impact[1][u][u] + impact[max_iters][u][u] + impact[itr][u][u]
-
-            ## NOTE: Experimental.
-            # penalty[max_iters][u][u] = penalty[1][u][u] + penalty[max_iters][u][u] + penalty[itr][u][u]
             
 
     seed_set = set()
     for k in range(n_seeds):
         v = None
         max_val = float("-inf")
-
         for cand in node_set - seed_set:
             val = impact[max_iters][cand][cand] + penalty[cand][cand]
             if val > max_val:
@@ -285,7 +286,8 @@ def new_solution(model, n_seeds, max_iters=2):
         for u in in_neighbors(v):
             impact[max_iters][u][u] -= impact[max_iters-1][u][v]
             impact[max_iters][u][u] -= impact[max_iters-1][v][u]
-            
+
+        # Reconstruct the penalty matrix.
         opinion[v] = 1.0
         penalty = np.zeros(shape=(len(node_set), len(node_set)))
         for z in node_set:

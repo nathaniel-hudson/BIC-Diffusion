@@ -39,6 +39,9 @@ class BIC(object):
         self.prepared = False
 
 
+    def __copy__(self):
+        return BIC(self.graph.copy(), self.ffm.copy(), self.init_opinion.copy())
+
     def prepare(self, threshold=1):
         """Prepare the BIC model instance for simulation by instantiating an instance-wide
            opinion vector that's indexed by time-step.
