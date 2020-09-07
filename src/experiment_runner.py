@@ -58,7 +58,7 @@ alg_codes = {
 }
 
 # Constant parameters.
-n_trials = 100 # 5
+n_trials = 100
 t_horizon = 100
 random_seed = 16785407 # a large *prime* number
 

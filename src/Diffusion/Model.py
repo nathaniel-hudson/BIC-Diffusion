@@ -1,3 +1,4 @@
+import copy
 import datetime
 import numpy    as np
 import pandas   as pd
@@ -39,8 +40,8 @@ class BIC(object):
         self.prepared = False
 
 
-    def __copy__(self):
-        return BIC(self.graph.copy(), self.ffm.copy(), self.init_opinion.copy())
+    # def __copy__(self):
+    #     return BIC(self.graph.copy(), self.ffm.copy(), self.init_opinion.copy())
 
     def prepare(self, threshold=1):
         """Prepare the BIC model instance for simulation by instantiating an instance-wide
